@@ -21,22 +21,22 @@
 // ---------------------------------------------------------
 const COLORS = {
   DEM: {
-    Solid:  "#1a3a8a",
+    Solid: "#1a3a8a",
     Likely: "#2b6cb0",
-    Lean:   "#4299e1",
-    Tilt:   "#90cdf4"
+    Lean: "#4299e1",
+    Tilt: "#90cdf4"
   },
   GOP: {
-    Solid:  "#991b1b",
+    Solid: "#991b1b",
     Likely: "#c53030",
-    Lean:   "#e53e3e",
-    Tilt:   "#feb2b2"
+    Lean: "#e53e3e",
+    Tilt: "#feb2b2"
   },
   IND: {
-    Solid:  "#4c2882",
+    Solid: "#4c2882",
     Likely: "#6e4c9e",
-    Lean:   "#987bb8",
-    Tilt:   "#bfa8d4"
+    Lean: "#987bb8",
+    Tilt: "#bfa8d4"
   },
   UNCONTESTED: "#e2e8f0"
 };
@@ -312,12 +312,13 @@ function renderTopBanner() {
   document.getElementById("dem-expected-seats").textContent = cc.expected_dem_seats.toFixed(1);
   document.getElementById("gop-expected-seats").textContent = cc.expected_gop_seats.toFixed(1);
 
-  if (meta && meta.n_trials) {
-    document.getElementById("meta-trials").textContent = `${meta.n_trials.toLocaleString()} Trials`;
+  const trialsEl = document.getElementById("meta-trials");
+  if (trialsEl && meta && meta.n_trials) {
+    trialsEl.textContent = `${meta.n_trials.toLocaleString()} Trials`;
   }
-  if (meta && meta.generic_ballot_margin !== undefined) {
-    const gcbEl = document.getElementById("meta-gcb");
-    if (gcbEl) gcbEl.textContent = `GCB: D+${meta.generic_ballot_margin.toFixed(1)}%`;
+  const gcbEl = document.getElementById("meta-gcb");
+  if (gcbEl && meta && meta.generic_ballot_margin !== undefined) {
+    gcbEl.textContent = `GCB: D+${meta.generic_ballot_margin.toFixed(1)}%`;
   }
 
   // Count seats across spectrum buckets (including 34 Dem baseline in Solid D and 31 GOP baseline in Solid R)
@@ -345,15 +346,15 @@ function renderTopBanner() {
   });
 
   const segments = [
-    { key: "D_Solid",  label: "Solid D (inc. 34 base)", count: counts.D_Solid,  color: COLORS.DEM.Solid,  textColor: "#ffffff" },
-    { key: "D_Likely", label: "Likely D",               count: counts.D_Likely, color: COLORS.DEM.Likely, textColor: "#ffffff" },
-    { key: "D_Lean",   label: "Lean D",                 count: counts.D_Lean,   color: COLORS.DEM.Lean,   textColor: "#ffffff" },
-    { key: "D_Tilt",   label: "Tilt D",                 count: counts.D_Tilt,   color: COLORS.DEM.Tilt,   textColor: "#0f172a" },
-    { key: "I_Any",    label: "Leading Ind",            count: counts.I_Any,    color: COLORS.IND.Lean,   textColor: "#ffffff" },
-    { key: "R_Tilt",   label: "Tilt R",                 count: counts.R_Tilt,   color: COLORS.GOP.Tilt,   textColor: "#0f172a" },
-    { key: "R_Lean",   label: "Lean R",                 count: counts.R_Lean,   color: COLORS.GOP.Lean,   textColor: "#ffffff" },
-    { key: "R_Likely", label: "Likely R",               count: counts.R_Likely, color: COLORS.GOP.Likely, textColor: "#ffffff" },
-    { key: "R_Solid",  label: "Solid R (inc. 31 base)", count: counts.R_Solid,  color: COLORS.GOP.Solid,  textColor: "#ffffff" }
+    { key: "D_Solid", label: "Solid D (inc. 34 base)", count: counts.D_Solid, color: COLORS.DEM.Solid, textColor: "#ffffff" },
+    { key: "D_Likely", label: "Likely D", count: counts.D_Likely, color: COLORS.DEM.Likely, textColor: "#ffffff" },
+    { key: "D_Lean", label: "Lean D", count: counts.D_Lean, color: COLORS.DEM.Lean, textColor: "#ffffff" },
+    { key: "D_Tilt", label: "Tilt D", count: counts.D_Tilt, color: COLORS.DEM.Tilt, textColor: "#0f172a" },
+    { key: "I_Any", label: "Leading Ind", count: counts.I_Any, color: COLORS.IND.Lean, textColor: "#ffffff" },
+    { key: "R_Tilt", label: "Tilt R", count: counts.R_Tilt, color: COLORS.GOP.Tilt, textColor: "#0f172a" },
+    { key: "R_Lean", label: "Lean R", count: counts.R_Lean, color: COLORS.GOP.Lean, textColor: "#ffffff" },
+    { key: "R_Likely", label: "Likely R", count: counts.R_Likely, color: COLORS.GOP.Likely, textColor: "#ffffff" },
+    { key: "R_Solid", label: "Solid R (inc. 31 base)", count: counts.R_Solid, color: COLORS.GOP.Solid, textColor: "#ffffff" }
   ];
 
   const barEl = document.getElementById("chamber-spectrum-bar");
@@ -559,7 +560,7 @@ async function renderChoroplethMap() {
       .attr("font-size", "10px")
       .attr("font-weight", "700")
       .attr("fill", isLightBg ? "#0f172a" : "#ffffff")
-      .attr(" paint-order", "stroke")
+      .attr("paint-order", "stroke")
       .attr("stroke", isLightBg ? "#ffffff" : "#0f172a")
       .attr("stroke-width", isLightBg ? "2px" : "2.2px")
       .attr("stroke-opacity", 0.65)
@@ -764,38 +765,68 @@ function hideMapTooltip() {
 }
 
 // ---------------------------------------------------------
-// 8. Render Seat Distribution Histogram
+// 8. Render Seat Distribution Histogram (Fixed & Responsive)
 // ---------------------------------------------------------
 function renderSeatHistogram() {
-  const dist = simData.chamber_control.seat_distribution || {};
-  const ci = simData.chamber_control.dem_seats_80_ci || [46, 51];
-  document.getElementById("hist-ci-badge").textContent = `${ci[0]} – ${ci[1]} seats`;
+  const dist = simData?.chamber_control?.seat_distribution || {};
+  const ci = simData?.chamber_control?.dem_seats_80_ci || [48, 53];
 
-  // Filter range 41 to 57 for clean visual focus
+  // Update credible interval badge to live simulation numbers (48 – 53 seats)
+  const ciBadge = document.getElementById("hist-ci-badge");
+  if (ciBadge) {
+    ciBadge.textContent = `${ci[0]} – ${ci[1]} seats`;
+  }
+
+  // Parse and filter relevant seat counts
   const data = Object.keys(dist)
-    .map(k => ({ seats: parseInt(k, 10), prob: dist[k] }))
-    .filter(d => d.seats >= 41 && d.seats <= 57);
+    .map(k => ({ seats: Number(k), prob: Number(dist[k]) }))
+    .filter(d => d.seats >= 42 && d.seats <= 58)
+    .sort((a, b) => a.seats - b.seats);
+
+  if (!data.length) return;
 
   const svg = d3.select("#histogram-svg");
   svg.selectAll("*").remove();
 
-  const width = 760;
-  const height = 240;
-  const margin = { top: 20, right: 20, bottom: 38, left: 45 };
+  // Define clear viewport
+  const width = 800;
+  const height = 250;
+  const margin = { top: 25, right: 25, bottom: 40, left: 50 };
 
-  svg.attr("viewBox", `0 0 ${width} ${height}`);
+  svg
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .style("display", "block")
+    .style("width", "100%")
+    .style("height", "auto");
 
+  // X scale (Seats)
   const x = d3.scaleBand()
     .domain(data.map(d => d.seats))
     .range([margin.left, width - margin.right])
-    .padding(0.18);
+    .padding(0.22);
 
+  // Y scale (Probability)
   const maxProb = d3.max(data, d => d.prob) || 0.22;
   const y = d3.scaleLinear()
-    .domain([0, maxProb * 1.12])
+    .domain([0, maxProb * 1.18])
     .range([height - margin.bottom, margin.top]);
 
-  // Bars: Red if < 50 (GOP majority), Blue if >= 50 (Dem majority)
+  // Grid lines
+  svg.append("g")
+    .attr("class", "grid")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(
+      d3.axisLeft(y)
+        .ticks(4)
+        .tickSize(-(width - margin.left - margin.right))
+        .tickFormat("")
+    )
+    .selectAll("line")
+    .attr("stroke", "#e2e8f0")
+    .attr("stroke-dasharray", "2,2");
+
+  // Histogram Bars
   svg.append("g")
     .selectAll("rect")
     .data(data)
@@ -803,35 +834,36 @@ function renderSeatHistogram() {
     .attr("x", d => x(d.seats))
     .attr("y", d => y(d.prob))
     .attr("width", x.bandwidth())
-    .attr("height", d => height - margin.bottom - y(d.prob))
+    .attr("height", d => Math.max(0, height - margin.bottom - y(d.prob)))
     .attr("rx", 3)
-    .attr("fill", d => d.seats >= 50 ? "#2b6cb0" : "#c53030")
-    .attr("opacity", d => (d.seats >= ci[0] && d.seats <= ci[1]) ? 0.95 : 0.45)
+    .attr("fill", d => d.seats >= 51 ? "#1a3a8a" : (d.seats === 50 ? "#4299e1" : "#c53030"))
+    .attr("opacity", d => (d.seats >= ci[0] && d.seats <= ci[1]) ? 0.95 : 0.40)
     .append("title")
-    .text(d => `${d.seats} Dem Seats (${100 - d.seats} GOP): ${(d.prob * 100).toFixed(2)}% of simulations`);
+    .text(d => `${d.seats} Dem/Ind Seats (${100 - d.seats} GOP): ${(d.prob * 100).toFixed(1)}%`);
 
-  // Bar top percentage labels for prominent bars
+  // Top percentage labels
   svg.append("g")
-    .selectAll("text")
+    .selectAll("text.prob-label")
     .data(data.filter(d => d.prob >= 0.015))
     .join("text")
+    .attr("class", "prob-label")
     .attr("x", d => x(d.seats) + x.bandwidth() / 2)
-    .attr("y", d => y(d.prob) - 5)
+    .attr("y", d => y(d.prob) - 6)
     .attr("text-anchor", "middle")
     .attr("font-family", "JetBrains Mono, monospace")
     .attr("font-size", "9.5px")
     .attr("font-weight", "600")
-    .attr("fill", "#334155")
+    .attr("fill", "#475569")
     .text(d => `${(d.prob * 100).toFixed(1)}%`);
 
-  // 50-Seat Majority Threshold Line
+  // 50/51 Majority Line
   const x50 = x(50);
   if (x50 !== undefined) {
-    const lineX = x50 - (x.step() - x.bandwidth()) / 2;
+    const lineX = x50 + x.bandwidth() / 2;
     svg.append("line")
       .attr("x1", lineX)
       .attr("x2", lineX)
-      .attr("y1", margin.top - 6)
+      .attr("y1", margin.top - 10)
       .attr("y2", height - margin.bottom)
       .attr("stroke", "#0f172a")
       .attr("stroke-width", 2)
@@ -839,11 +871,11 @@ function renderSeatHistogram() {
 
     svg.append("text")
       .attr("x", lineX + 6)
-      .attr("y", margin.top + 6)
+      .attr("y", margin.top + 2)
       .attr("font-size", "10px")
       .attr("font-weight", "700")
       .attr("fill", "#0f172a")
-      .text("50 Seats (Dem Majority →)");
+      .text("50/51 Majority Threshold →");
   }
 
   // X Axis
@@ -857,7 +889,7 @@ function renderSeatHistogram() {
   // Y Axis
   svg.append("g")
     .attr("transform", `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).ticks(5).tickFormat(d => `${(d * 100).toFixed(0)}%`))
+    .call(d3.axisLeft(y).ticks(4).tickFormat(d => `${(d * 100).toFixed(0)}%`))
     .selectAll("text")
     .attr("font-family", "JetBrains Mono, monospace")
     .attr("font-size", "10px");

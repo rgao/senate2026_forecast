@@ -75,63 +75,44 @@ OFFICE_TIER_SCORES = {
 # ---------------------------------------------------------
 # 3. Expected Margin (mu) & Idiosyncratic Sigma Construction
 # ---------------------------------------------------------
-def compute_race_mu_and_sigma(race_info, gcb_margin=DEFAULT_GCB_MARGIN):
-    """
-    Computes expected margin mu_s and idiosyncratic sigma for a race.
-    Margin convention: Positive = Dem / Anti-GOP Independent, Negative = GOP.
-    
-    Ghost Incumbency Fix:
-    Only awards +/- 2.5% incumbency bonus if the candidate running for the incumbent party
-    actually holds office_tier == 'SENATOR'. All open seats receive 0.0.
-    """
-    pvi = safe_float(race_info.get("cook_pvi"), 0.0)
-    elasticity = safe_float(race_info.get("elasticity"), 1.0)
+def compute_race_mu_and_sigma(race_info, gcb_margin=8.8):
+    pvi = float(race_info.get("cook_pvi") or 0.0)
+    elasticity = float(race_info.get("elasticity") or 1.0)
     inc_party = str(race_info.get("incumbent_party") or "OPEN").strip().upper()
     
     d_tier = str(race_info.get("dem_office_tier") or "FIRST_TIME").strip().upper()
     g_tier = str(race_info.get("gop_office_tier") or "FIRST_TIME").strip().upper()
     
-    # Strict Incumbency Check (No Ghost Incumbency in Open Seats)
+    # Strict Incumbency: 0.0% in open seats like NC, MI, TX, NH, MT
     if inc_party == "DEM" and d_tier == "SENATOR":
         inc_bonus = 2.5
     elif inc_party == "GOP" and g_tier == "SENATOR":
         inc_bonus = -2.5
     else:
-        inc_bonus = 0.0
+        inc_bonus = 0.0  # Open seat!
         
-    # Candidate quality tier differential
     tier_offset = OFFICE_TIER_SCORES.get(d_tier, 0.0) - OFFICE_TIER_SCORES.get(g_tier, 0.0)
-    
-    # Penalties (scandals, third-party splits)
-    d_pen = safe_float(race_info.get("dem_penalty"), 0.0)
-    g_pen = safe_float(race_info.get("gop_penalty"), 0.0)
+    d_pen = float(race_info.get("dem_penalty") or 0.0)
+    g_pen = float(race_info.get("gop_penalty") or 0.0)
     pen_offset = -d_pen + g_pen
     
-    # National environment shift scaled by state elasticity
+    # 8.8% National Environment Shift
     env_shift = gcb_margin * elasticity
     
     # Structural Fundamentals Margin
     fund_margin = pvi + env_shift + inc_bonus + tier_offset + pen_offset
     
-    # Blend with polling composite if available (85% poll / 15% fund)
+    # Blend with polling composite if available (85% Poll / 15% Fund)
     raw_poll = race_info.get("poll_composite_margin")
-    if raw_poll is not None and str(raw_poll).strip().lower() not in ("null", "none", "nan", ""):
-        try:
-            poll_val = float(raw_poll)
-            if not math.isnan(poll_val):
-                expected_mu = 0.85 * poll_val + 0.15 * fund_margin
-            else:
-                expected_mu = fund_margin
-        except (ValueError, TypeError):
-            expected_mu = fund_margin
+    if raw_poll is not None:
+        expected_mu = 0.85 * float(raw_poll) + 0.15 * fund_margin
     else:
         expected_mu = fund_margin
         
-    # Candidate-level volatility sigma (2.5% if an actual incumbent Senator is running, else 4.0%)
     has_running_incumbent = (inc_bonus != 0.0)
     idio_sigma = 2.5 if has_running_incumbent else 4.0
     
-    return round(float(expected_mu), 3), round(float(fund_margin), 2), float(inc_bonus), float(idio_sigma)
+    return round(expected_mu, 3), round(fund_margin, 2), inc_bonus, idio_sigma
 
 # ---------------------------------------------------------
 # 4. Covariance Matrix & Cholesky Factorization

@@ -1,544 +1,618 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>2026 U.S. Senate Forecast | Election Desk</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Inter & JetBrains Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- D3.js v7 & TopoJSON Client CDN -->
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="https://unpkg.com/topojson-client@3"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>2026 U.S. Senate Forecast | Election Desk</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- D3.js v7 & TopoJSON Client CDN -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/topojson-client@3"></script>
 
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-          },
-          colors: {
-            dem: {
-              solid: '#1a3a8a',
-              likely: '#2b6cb0',
-              lean: '#4299e1',
-              tilt: '#90cdf4'
-            },
-            gop: {
-              solid: '#991b1b',
-              likely: '#c53030',
-              lean: '#e53e3e',
-              tilt: '#feb2b2'
-            },
-            ind: {
-              solid: '#4c2882',
-              likely: '#6e4c9e',
-              lean: '#987bb8',
-              tilt: '#bfa8d4'
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        dem: {
+                            solid: '#1a3a8a',
+                            likely: '#2b6cb0',
+                            lean: '#4299e1',
+                            tilt: '#90cdf4'
+                        },
+                        gop: {
+                            solid: '#991b1b',
+                            likely: '#c53030',
+                            lean: '#e53e3e',
+                            tilt: '#feb2b2'
+                        },
+                        ind: {
+                            solid: '#4c2882',
+                            likely: '#6e4c9e',
+                            lean: '#987bb8',
+                            tilt: '#bfa8d4'
+                        }
+                    }
+                }
             }
-          }
         }
-      }
-    }
-  </script>
+    </script>
 
-  <style>
-    body {
-      background-color: #f8fafc;
-      color: #0f172a;
-      font-family: 'Inter', sans-serif;
-    }
-    .state-polygon {
-      stroke: #ffffff;
-      stroke-width: 1px;
-      stroke-linejoin: round;
-      transition: filter 0.12s ease, stroke-width 0.12s ease;
-      cursor: pointer;
-    }
-    .state-polygon.uncontested {
-      cursor: default;
-    }
-    .state-polygon.contested:hover {
-      stroke: #0f172a;
-      stroke-width: 2.2px;
-      filter: brightness(0.95);
-    }
-    .state-flip-outline {
-      stroke: #0f172a;
-      stroke-width: 1.6px;
-      pointer-events: none;
-    }
-    .tooltip-card {
-      pointer-events: none;
-      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.18), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
-      backdrop-filter: blur(8px);
-      background: rgba(255, 255, 255, 0.98);
-      transition: opacity 0.1s ease;
-    }
-    /* Custom scrollbar for race table */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #f1f5f9;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 3px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
-    }
-  </style>
+    <style>
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .state-polygon {
+            stroke: #ffffff;
+            stroke-width: 1px;
+            stroke-linejoin: round;
+            transition: filter 0.12s ease, stroke-width 0.12s ease;
+            cursor: pointer;
+        }
+
+        .state-polygon.uncontested {
+            cursor: default;
+        }
+
+        .state-polygon.contested:hover {
+            stroke: #0f172a;
+            stroke-width: 2.2px;
+            filter: brightness(0.95);
+        }
+
+        .state-flip-outline {
+            stroke: #0f172a;
+            stroke-width: 1.6px;
+            pointer-events: none;
+        }
+
+        .tooltip-card {
+            pointer-events: none;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.18), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+            backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.98);
+            transition: opacity 0.1s ease;
+        }
+
+        /* Custom scrollbar for race table */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
 </head>
+
 <body class="min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
 
-  <!-- Top Navigation Header -->
-  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div class="flex items-center space-x-6">
-        <div class="flex items-center space-x-2.5">
-          <div class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white font-bold text-lg tracking-tighter">
-            26
-          </div>
-          <div>
-            <span class="font-extrabold text-lg tracking-tight text-slate-900">ELECTION<span class="text-blue-700">DESK</span></span>
-            <span class="hidden sm:inline-block ml-2 text-xs uppercase font-semibold tracking-wider px-2 py-0.5 bg-slate-100 text-slate-600 rounded">Senate Model</span>
-          </div>
+    <!-- Top Header -->
+    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+                2026 Senate Forecast
+            </h1>
+            <div class="flex items-center space-x-2 text-xs sm:text-sm font-semibold text-slate-600 font-mono">
+                <span id="meta-gcb" class="text-blue-700 font-bold">GCB: D+8.8%</span>
+                <span class="text-slate-300">•</span>
+                <span id="meta-timestamp" class="text-slate-500">Nov 3, 2026</span>
+            </div>
         </div>
+    </header>
 
-        <nav class="hidden md:flex items-center space-x-1 text-sm font-medium">
-          <button data-nav="forecast" class="nav-tab px-3.5 py-2 rounded-lg text-slate-900 bg-slate-100 font-semibold transition">
-            Senate Forecast
-          </button>
-          <button data-nav="races" class="nav-tab px-3.5 py-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition">
-            All 35 Contested Races
-          </button>
-          <button data-nav="methodology" class="nav-tab px-3.5 py-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition">
-            Methodology
-          </button>
-        </nav>
-      </div>
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-      <!-- Simulation Metadata Pill -->
-      <div class="flex items-center space-x-3">
-        <div id="sim-meta-pill" class="flex items-center space-x-2 bg-blue-50/80 border border-blue-200 px-3.5 py-1.5 rounded-full text-xs font-medium text-slate-800 shadow-sm">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span id="meta-gcb" class="font-extrabold text-blue-700 tracking-tight">Generic Ballot: D+8.8%</span>
-          <span class="text-blue-300">|</span>
-          <span id="meta-trials" class="font-medium text-slate-600">40,000 Trials</span>
-          <span class="text-blue-300">|</span>
-          <span id="meta-timestamp" class="font-mono text-slate-500">Nov 3, 2026</span>
-        </div>
-        <button id="mobile-method-btn" class="md:hidden px-3 py-1.5 text-xs font-semibold bg-slate-900 text-white rounded-lg">
-          Methodology
-        </button>
-      </div>
+        <!-- Top Summary Banner: Chamber Control & Seat Balance Bar -->
+        <section id="section-forecast" class="space-y-6">
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    <!-- Left: Dem Control Odds -->
+                    <div
+                        class="lg:col-span-3 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-100 pb-4 lg:pb-0 lg:pr-6">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-sm bg-[#1a3a8a]"></span>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Democrats +
+                                Ind.</span>
+                        </div>
+                        <div class="mt-2 flex items-baseline space-x-3">
+                            <span id="dem-majority-prob"
+                                class="text-4xl font-extrabold text-[#1a3a8a] tracking-tight">--%</span>
+                            <div><span class="text-xs font-bold text-slate-700">outright majority (≥51)</span><br><span
+                                    id="dem-50-prob" class="text-[11px] text-slate-500 font-medium">--% chance of ≥50
+                                    seats</span></div>
+                        </div>
+                        <div
+                            class="mt-2 flex items-center justify-between text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg">
+                            <span>Expected Seats: <strong id="dem-expected-seats"
+                                    class="font-mono text-slate-900">--</strong></span>
+                            <span>Baseline: <strong class="font-mono">34</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Center: Interactive Stacked Margin Spectrum Bar -->
+                    <div class="lg:col-span-6 flex flex-col justify-center">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">100-Seat Chamber
+                                Balance (By Expected Margin)</span>
+                            <span class="text-xs font-mono font-semibold text-slate-700">50 Majority / 51
+                                Outright</span>
+                        </div>
+
+                        <!-- 50 Seat Marker Arrow -->
+                        <div class="relative w-full h-4 mb-0.5">
+                            <div class="absolute left-1/2 -translate-x-1/2 bottom-0 flex flex-col items-center">
+                                <div
+                                    class="w-4 h-4 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold shadow">
+                                    ↓
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Stacked Bar -->
+                        <div id="chamber-spectrum-bar"
+                            class="w-full h-10 rounded-lg overflow-hidden flex border border-slate-200 shadow-inner bg-slate-100 text-xs font-bold text-white select-none">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+
+                        <!-- Sub-labels under bar -->
+                        <div class="flex justify-between items-center mt-2 text-[11px] text-slate-500">
+                            <span>← 34 Uncontested D + Solid/Likely/Lean/Tilt</span>
+                            <span class="font-mono text-slate-700 font-semibold">50</span>
+                            <span>Tilt/Lean/Likely/Solid + 31 Uncontested R →</span>
+                        </div>
+                    </div>
+
+                    <!-- Right: GOP Control Odds -->
+                    <div
+                        class="lg:col-span-3 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-slate-100 pt-4 lg:pt-0 lg:pl-6 text-left lg:text-right">
+                        <div class="flex items-center lg:justify-end space-x-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Republicans</span>
+                            <span class="w-3 h-3 rounded-sm bg-[#991b1b]"></span>
+                        </div>
+                        <div class="mt-2 flex items-baseline lg:justify-end space-x-3">
+                            <span id="gop-majority-prob"
+                                class="text-4xl font-extrabold text-[#991b1b] tracking-tight">--%</span>
+                            <div><span class="text-xs font-bold text-slate-700">chance of chamber
+                                    control</span><br><span class="text-[11px] text-slate-500 font-medium">via 51+ seats
+                                    or 50-50 VP tie-break</span></div>
+                        </div>
+                        <div
+                            class="mt-2 flex items-center justify-between text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg">
+                            <span>Baseline: <strong class="font-mono">31</strong></span>
+                            <span>Expected Seats: <strong id="gop-expected-seats"
+                                    class="font-mono text-slate-900">--</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map & Sidebar Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                <!-- Left Sidebar: Controls, Legend & Key Statutory Watch -->
+                <div class="lg:col-span-3 space-y-5">
+                    <!-- View Mode Switcher Card -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
+                        <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Visualization View</div>
+                        <div class="space-y-1">
+                            <button id="btn-view-map"
+                                class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold bg-slate-900 text-white transition">
+                                <span>Interactive Choropleth Map</span>
+                                <span class="text-[10px] px-1.5 py-0.5 bg-white/20 rounded">35 Races</span>
+                            </button>
+                            <button id="btn-view-hist"
+                                class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">
+                                <span>Seat Distribution Histogram</span>
+                                <span class="text-[10px] font-mono text-slate-400">40k Sims</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Margin Classification Legend -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Margin
+                                Classifications</span>
+                            <span
+                                class="text-[10px] font-mono bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">By
+                                Median μ_s</span>
+                        </div>
+                        <p class="text-[11px] leading-relaxed text-slate-500">
+                            Categorizations are determined strictly by <strong>expected median margin
+                                (μ<sub>s</sub>)</strong>, not win probability %.
+                        </p>
+
+                        <!-- Color Matrix Table -->
+                        <div class="space-y-2 text-xs">
+                            <div
+                                class="grid grid-cols-4 gap-1 text-[10px] font-semibold text-slate-500 text-center pb-1 border-b border-slate-100">
+                                <div class="text-left">Party</div>
+                                <div>Solid<br><span class="font-mono text-[9px]">≥12%</span></div>
+                                <div>Likely<br><span class="font-mono text-[9px]">5–12%</span></div>
+                                <div>Lean/Tilt<br><span class="font-mono text-[9px]">&lt;5% / &lt;1%</span></div>
+                            </div>
+
+                            <!-- Dem Row -->
+                            <div class="grid grid-cols-4 gap-1.5 items-center">
+                                <span class="font-semibold text-slate-700 text-[11px]">Dem</span>
+                                <div class="h-5 rounded bg-[#1a3a8a]" title="Solid Dem (≥12%)"></div>
+                                <div class="h-5 rounded bg-[#2b6cb0]" title="Likely Dem (5-12%)"></div>
+                                <div class="grid grid-cols-2 gap-1">
+                                    <div class="h-5 rounded bg-[#4299e1]" title="Lean Dem (1-5%)"></div>
+                                    <div class="h-5 rounded bg-[#90cdf4]" title="Tilt Dem (<1%)"></div>
+                                </div>
+                            </div>
+
+                            <!-- GOP Row -->
+                            <div class="grid grid-cols-4 gap-1.5 items-center">
+                                <span class="font-semibold text-slate-700 text-[11px]">GOP</span>
+                                <div class="h-5 rounded bg-[#991b1b]" title="Solid GOP (≥12%)"></div>
+                                <div class="h-5 rounded bg-[#c53030]" title="Likely GOP (5-12%)"></div>
+                                <div class="grid grid-cols-2 gap-1">
+                                    <div class="h-5 rounded bg-[#e53e3e]" title="Lean GOP (1-5%)"></div>
+                                    <div class="h-5 rounded bg-[#feb2b2]" title="Tilt GOP (<1%)"></div>
+                                </div>
+                            </div>
+
+                            <!-- Ind Row -->
+                            <div class="grid grid-cols-4 gap-1.5 items-center">
+                                <span class="font-semibold text-slate-700 text-[11px]">Ind</span>
+                                <div class="h-5 rounded bg-[#4c2882]" title="Solid Ind (≥12%)"></div>
+                                <div class="h-5 rounded bg-[#6e4c9e]" title="Likely Ind (5-12%)"></div>
+                                <div class="grid grid-cols-2 gap-1">
+                                    <div class="h-5 rounded bg-[#987bb8]" title="Lean Ind (1-5%)"></div>
+                                    <div class="h-5 rounded bg-[#bfa8d4]" title="Tilt Ind (<1%)"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hatch & Uncontested Legend -->
+                        <div class="pt-2 border-t border-slate-100 space-y-2 text-[11px] text-slate-600">
+                            <div class="flex items-center space-x-2.5">
+                                <svg class="w-6 h-4 rounded border border-slate-400 flex-shrink-0" viewBox="0 0 24 16">
+                                    <rect width="24" height="16" fill="#4299e1"></rect>
+                                    <path d="M-4,4 l8,-8 M0,16 l16,-16 M12,20 l12,-12" stroke="#ffffff" stroke-width="2"
+                                        stroke-opacity="0.75"></path>
+                                </svg>
+                                <span><strong>Diagonal Hatch:</strong> Projected party flip from current
+                                    incumbent</span>
+                            </div>
+                            <div class="flex items-center space-x-2.5">
+                                <span class="w-6 h-4 rounded bg-[#e2e8f0] border border-slate-300 flex-shrink-0"></span>
+                                <span><strong>Gray:</strong> No Senate race in 2026 (65 baseline seats)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Special Rules Watch Card (GA Runoff, AK/ME RCV, Ind Challengers) -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
+                        <div class="text-xs font-bold uppercase tracking-wider text-slate-700">Statutory & Special Rules
+                            Watch</div>
+                        <div id="statutory-watch-list" class="space-y-2.5 text-xs">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Center/Right Area: Choropleth Map & Distribution Histogram -->
+                <div class="lg:col-span-9 space-y-6">
+
+                    <!-- Map Container Card -->
+                    <div id="card-map-view"
+                        class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 relative">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <div>
+                                <h2 class="text-base font-bold text-slate-900">2026 Senate Forecast Map</h2>
+                                <p class="text-xs text-slate-500">Hover over any contested state for candidate vote
+                                    shares, PVI, 2024 presidential baseline, and RCV/Runoff rules.</p>
+                            </div>
+                            <div class="flex items-center space-x-2 text-xs">
+                                <span class="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-medium"> Projected
+                                    Flips: <strong id="flip-count-badge"
+                                        class="font-mono text-slate-900">--</strong></span>
+                            </div>
+                        </div>
+
+                        <!-- Responsive SVG Map Wrapper -->
+                        <div id="map-container"
+                            class="w-full relative overflow-hidden flex justify-center items-center min-h-[420px] sm:min-h-[500px]">
+                            <svg id="senate-map-svg" viewBox="0 0 975 610" class="w-full h-auto max-h-[560px]"></svg>
+                        </div>
+
+                        <!-- Quick Battleground Pills Footer -->
+                        <div class="mt-4 pt-4 border-t border-slate-100">
+                            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Top
+                                Tipping-Point Battlegrounds (Decisive 50th Seat)</div>
+                            <div id="tipping-pills-row" class="flex flex-wrap gap-2">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seat Distribution Histogram Card -->
+                    <div id="card-hist-view" class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6">
+                        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900">Simulated Democratic + Independent Caucus
+                                    Seat Distribution</h3>
+                                <p class="text-xs text-slate-500">Frequency across 40,000 correlated Cholesky Monte
+                                    Carlo trials. Vertical dashed line marks 50-seat majority threshold.</p>
+                            </div>
+                            <div
+                                class="flex items-center space-x-3 text-xs font-mono bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                                <span>80% Credible Interval: <strong id="hist-ci-badge" class="text-slate-900">46 – 51
+                                        seats</strong></span>
+                            </div>
+                        </div>
+                        <div id="histogram-container" class="w-full h-64 relative">
+                            <svg id="histogram-svg" class="w-full h-full"></svg>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive Contested Races Table Section -->
+        <section id="section-races" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div
+                class="p-5 sm:p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">All 35 Contested Senate Races</h2>
+                    <p class="text-xs text-slate-500">Click any column header to sort. Filter by region, party, or
+                        rating tier.</p>
+                </div>
+
+                <!-- Search & Filter Controls -->
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <input id="race-search-input" type="text" placeholder="Search state or candidate..."
+                        class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 w-48" />
+                    <select id="region-filter-select"
+                        class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        <option value="ALL">All Regions (35)</option>
+                        <option value="South">South</option>
+                        <option value="Midwest">Midwest</option>
+                        <option value="West">West</option>
+                        <option value="Northeast">Northeast</option>
+                    </select>
+                    <select id="competitive-filter-select"
+                        class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        <option value="ALL">All Races</option>
+                        <option value="COMPETITIVE">Competitive (|Margin| &lt; 12%)</option>
+                        <option value="FLIPS">Projected Flips Only</option>
+                        <option value="IND">Independent Challengers</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr
+                            class="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200 select-none">
+                            <th data-sort="state_name" class="py-3 px-4 cursor-pointer hover:text-slate-900">State ↕
+                            </th>
+                            <th data-sort="region" class="py-3 px-3 cursor-pointer hover:text-slate-900">Region ↕</th>
+                            <th class="py-3 px-4">Challenger / Dem</th>
+                            <th class="py-3 px-4">GOP Candidate</th>
+                            <th data-sort="cook_pvi" class="py-3 px-3 cursor-pointer hover:text-slate-900 text-right">
+                                Voter Index (PVI) ↕</th>
+                            <th data-sort="pres_2024" class="py-3 px-3 cursor-pointer hover:text-slate-900 text-right">
+                                2024 Pres ↕</th>
+                            <th data-sort="rating" class="py-3 px-3 cursor-pointer hover:text-slate-900 text-center">
+                                Rating (By μ_s) ↕</th>
+                            <th data-sort="median_margin"
+                                class="py-3 px-3 cursor-pointer hover:text-slate-900 text-right">Expected Margin ↕</th>
+                            <th data-sort="win_prob" class="py-3 px-3 cursor-pointer hover:text-slate-900 text-right">
+                                Leader Win Prob ↕</th>
+                            <th data-sort="tipping_point_prob"
+                                class="py-3 px-3 cursor-pointer hover:text-slate-900 text-right">Tipping Pt % ↕</th>
+                            <th data-sort="total_spend_m"
+                                class="py-3 px-4 cursor-pointer hover:text-slate-900 text-right">Spend ($M) ↕</th>
+                        </tr>
+                    </thead>
+                    <tbody id="races-table-body" class="divide-y divide-slate-100 text-slate-700">
+                        <!-- Populated dynamically via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Methodology Section -->
+        <section id="section-methodology"
+            class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+            <div class="border-b border-slate-200 pb-4 flex items-center justify-between">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-blue-700">Model Architecture &
+                        Technical Specification</span>
+                    <h2 class="text-xl font-extrabold text-slate-900 mt-0.5">2026 U.S. Senate Forecasting Methodology
+                    </h2>
+                </div>
+                <span class="text-xs font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600">v2.6 Cross-Sectional
+                    Engine</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-xs leading-relaxed text-slate-600">
+                <!-- Card 1: 85/15 Polling & Fundamentals Blend -->
+                <div class="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
+                    <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm">
+                        <span
+                            class="w-6 h-6 rounded bg-blue-600 text-white flex items-center justify-center font-mono text-xs">1</span>
+                        <span>85% Polling / 15% Fundamentals</span>
+                    </div>
+                    <p>
+                        For every polled race, the expected margin <span class="font-mono text-slate-800">μ_s</span>
+                        blends time-decayed, voter-screen-adjusted polling composites (<strong>85% weight</strong>) with
+                        structural race fundamentals (<strong>15% weight</strong>):
+                    </p>
+                    <div class="bg-white p-2.5 rounded border border-slate-200 font-mono text-[11px] text-slate-800">
+                        μ_s = 0.85 · Margin_poll + 0.15 · Margin_fund
+                    </div>
+                    <p>
+                        Structural fundamentals (<span class="font-mono">Margin_fund</span>) combine state PVI, national
+                        Generic Ballot (<span class="font-mono">D+8.8% × Elasticity</span>), strict incumbency (<span
+                            class="font-mono">±2.5%</span> <em>only</em> if a sitting Senator is running; <span
+                            class="font-mono">0.0%</span> in open seats), candidate office tiers, and controversy
+                        deductions.
+                    </p>
+                </div>
+
+                <!-- Card 2: Cycle-Weighted Voter Index & Dynamic Voter Screens -->
+                <div class="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
+                    <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm">
+                        <span
+                            class="w-6 h-6 rounded bg-blue-600 text-white flex items-center justify-center font-mono text-xs">2</span>
+                        <span>0.65 / 0.35 Partisan Voter Index</span>
+                    </div>
+                    <p>
+                        Rather than an equal 50/50 split, each state's baseline Partisan Voter Index (PVI) weights the
+                        2024 presidential two-party margin deviation at <strong>65%</strong> and the 2020 deviation at
+                        <strong>35%</strong>:
+                    </p>
+                    <div class="bg-white p-2.5 rounded border border-slate-200 font-mono text-[11px] text-slate-800">
+                        PVI_s = 0.65 · Dev_2024 + 0.35 · Dev_2020
+                    </div>
+                    <p>
+                        Registered Voter (RV) and Adult (A) polls are dynamically adjusted using an exponential spending
+                        saturation dampener <span class="font-mono">exp(-S_total / 150)</span> and a bounded relative
+                        spending turnout skew <span class="font-mono">0.5 · tanh(0.5 · ln(S_D / S_R))</span>.
+                    </p>
+                </div>
+
+                <!-- Card 3: Cholesky Correlated Covariance Matrix -->
+                <div class="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
+                    <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm">
+                        <span
+                            class="w-6 h-6 rounded bg-blue-600 text-white flex items-center justify-center font-mono text-xs">3</span>
+                        <span>Cholesky Covariance &amp; 40k Trials</span>
+                    </div>
+                    <p>
+                        Election errors are correlated across states. We construct a 35×35 covariance matrix <span
+                            class="font-mono">Σ</span> combining three orthogonal variance components:
+                    </p>
+                    <ul class="list-disc list-inside space-y-1 text-slate-700">
+                        <li><strong>National Wave Error:</strong> <span class="font-mono">σ_nat = 2.0%</span></li>
+                        <li><strong>Regional Cluster Error:</strong> <span class="font-mono">σ_reg = 1.5%</span></li>
+                        <li><strong>Idiosyncratic Noise:</strong> <span class="font-mono">σ_idio = 2.5%</span>
+                            (incumbents) to <span class="font-mono">4.0%</span> (open seats)</li>
+                    </ul>
+                    <p>
+                        Using Cholesky decomposition (<span class="font-mono">Σ = L·Lᵀ</span>), we draw 40,000
+                        correlated multivariate normal outcome vectors <span class="font-mono">Y = μ + L·Z</span>.
+                    </p>
+                </div>
+
+                <!-- Card 4: Statutory RCV & Runoff Rules -->
+                <div class="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
+                    <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm">
+                        <span
+                            class="w-6 h-6 rounded bg-purple-700 text-white flex items-center justify-center font-mono text-xs">4</span>
+                        <span>RCV (AK, ME) &amp; GA Runoff Rules</span>
+                    </div>
+                    <p>
+                        <strong>Georgia Majority Rule:</strong> Requires &gt;50.0% to win outright. Accounting for minor
+                        third-party vote share, simulated trials where <span class="font-mono">|Margin| &lt; 2.5%</span>
+                        are flagged as advancing to a December runoff.
+                    </p>
+                    <p>
+                        <strong>Alaska &amp; Maine RCV:</strong> First-choice major candidate vote shares are scaled by
+                        <span class="font-mono">first_choice_share_major</span> (<strong>0.94</strong> in AK,
+                        <strong>0.98</strong> in ME). If neither crosses 50% in Round 1, non-exhausted minor ballots
+                        transfer according to empirical preference flows (75% GOP flow in AK Top-4; 55% Dem flow in ME).
+                    </p>
+                </div>
+
+                <!-- Card 5: Independent Challengers & 3-Way Splits -->
+                <div class="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
+                    <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm">
+                        <span
+                            class="w-6 h-6 rounded bg-purple-700 text-white flex items-center justify-center font-mono text-xs">5</span>
+                        <span>Independent Challenger Modeling</span>
+                    </div>
+                    <p>
+                        In states where Democrats stood down or lack a major contender (<strong>Nebraska</strong> with
+                        Dan Osborn, <strong>Idaho</strong> with Todd Achilles, <strong>South Dakota</strong> with Brian
+                        Bengs), the Independent is modeled as the primary non-GOP challenger and rendered in a 4-tier
+                        purple palette when leading.
+                    </p>
+                    <p>
+                        In <strong>Montana</strong>, where Independent Seth Bodnar runs alongside a Democratic nominee
+                        on the ballot, a calibrated 7.0% coalition split penalty accounts for ballot-line leakage.
+                    </p>
+                </div>
+
+                <!-- Card 6: Chamber Baseline & Majority Threshold -->
+                <div class="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
+                    <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm">
+                        <span
+                            class="w-6 h-6 rounded bg-slate-800 text-white flex items-center justify-center font-mono text-xs">6</span>
+                        <span>34D – 31R Non-Contested Baseline</span>
+                    </div>
+                    <p>
+                        Of the 100 U.S. Senate seats, <strong>65 seats</strong> are not up for election in 2026:
+                        <strong>34 held by Democrats/caucusing Independents</strong> and <strong>31 held by
+                            Republicans</strong>.
+                    </p>
+                    <p>
+                        To win outright Senate control (51 seats), Democrats/Independents must win at least 17 of the 35
+                        contested seats (or 16 for a 50–50 chamber split), while Republicans need 20 of the 35 contested
+                        seats to reach 51.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Dynamic Floating Hover Infobox (Tooltip) -->
+    <div id="map-tooltip"
+        class="tooltip-card fixed z-50 hidden w-72 rounded-xl border border-slate-200/90 p-3.5 text-xs text-slate-800">
+        <!-- Dynamically populated by docs/js/app.js -->
     </div>
-  </header>
 
-  <!-- Main Content Container -->
-  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-
-    <!-- Top Summary Banner: Chamber Control & Seat Balance Bar -->
-    <section id="section-forecast" class="space-y-6">
-      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          <!-- Left: Dem Control Odds -->
-          <div class="lg:col-span-3 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-100 pb-4 lg:pb-0 lg:pr-6">
-            <div class="flex items-center space-x-2">
-              <span class="w-3 h-3 rounded-sm bg-[#1a3a8a]"></span>
-              <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Democrats + Ind.</span>
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-12 py-6 text-xs text-slate-500">
+        <div
+            class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+                <strong>2026 U.S. Senate Forecasting Engine</strong> • Cholesky Monte Carlo Simulation &amp; Polling
+                Aggregation
             </div>
-            <div class="mt-2 flex items-baseline space-x-3">
-              <span id="dem-majority-prob" class="text-4xl font-extrabold text-[#1a3a8a] tracking-tight">--%</span>
-              <div><span class="text-xs font-bold text-slate-700">outright majority (≥51)</span><br><span id="dem-50-prob" class="text-[11px] text-slate-500 font-medium">--% chance of ≥50 seats</span></div>
+            <div class="font-mono text-[11px]">
+                Categorizations by Median Expected Margin (μ_s) • 34D / 31R Baseline
             </div>
-            <div class="mt-2 flex items-center justify-between text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg">
-              <span>Expected Seats: <strong id="dem-expected-seats" class="font-mono text-slate-900">--</strong></span>
-              <span>Baseline: <strong class="font-mono">34</strong></span>
-            </div>
-          </div>
-
-          <!-- Center: Interactive Stacked Margin Spectrum Bar -->
-          <div class="lg:col-span-6 flex flex-col justify-center">
-            <div class="flex items-center justify-between mb-1.5">
-              <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">100-Seat Chamber Balance (By Expected Margin)</span>
-              <span class="text-xs font-mono font-semibold text-slate-700">50 Majority / 51 Outright</span>
-            </div>
-
-            <!-- 50 Seat Marker Arrow -->
-            <div class="relative w-full h-4 mb-0.5">
-              <div class="absolute left-1/2 -translate-x-1/2 bottom-0 flex flex-col items-center">
-                <div class="w-4 h-4 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold shadow">
-                  ↓
-                </div>
-              </div>
-            </div>
-
-            <!-- Stacked Bar -->
-            <div id="chamber-spectrum-bar" class="w-full h-10 rounded-lg overflow-hidden flex border border-slate-200 shadow-inner bg-slate-100 text-xs font-bold text-white select-none">
-              <!-- Populated dynamically via JS -->
-            </div>
-
-            <!-- Sub-labels under bar -->
-            <div class="flex justify-between items-center mt-2 text-[11px] text-slate-500">
-              <span>← 34 Uncontested D + Solid/Likely/Lean/Tilt</span>
-              <span class="font-mono text-slate-700 font-semibold">50</span>
-              <span>Tilt/Lean/Likely/Solid + 31 Uncontested R →</span>
-            </div>
-          </div>
-
-          <!-- Right: GOP Control Odds -->
-          <div class="lg:col-span-3 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-slate-100 pt-4 lg:pt-0 lg:pl-6 text-left lg:text-right">
-            <div class="flex items-center lg:justify-end space-x-2">
-              <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Republicans</span>
-              <span class="w-3 h-3 rounded-sm bg-[#991b1b]"></span>
-            </div>
-            <div class="mt-2 flex items-baseline lg:justify-end space-x-3">
-              <span id="gop-majority-prob" class="text-4xl font-extrabold text-[#991b1b] tracking-tight">--%</span>
-              <div><span class="text-xs font-bold text-slate-700">chance of chamber control</span><br><span class="text-[11px] text-slate-500 font-medium">via 51+ seats or 50-50 VP tie-break</span></div>
-            </div>
-            <div class="mt-2 flex items-center justify-between text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg">
-              <span>Baseline: <strong class="font-mono">31</strong></span>
-              <span>Expected Seats: <strong id="gop-expected-seats" class="font-mono text-slate-900">--</strong></span>
-            </div>
-          </div>
         </div>
-      </div>
+    </footer>
 
-      <!-- Map & Sidebar Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-        <!-- Left Sidebar: Controls, Legend & Key Statutory Watch -->
-        <div class="lg:col-span-3 space-y-5">
-          <!-- View Mode Switcher Card -->
-          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-            <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Visualization View</div>
-            <div class="space-y-1">
-              <button id="btn-view-map" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold bg-slate-900 text-white transition">
-                <span>Interactive Choropleth Map</span>
-                <span class="text-[10px] px-1.5 py-0.5 bg-white/20 rounded">35 Races</span>
-              </button>
-              <button id="btn-view-hist" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">
-                <span>Seat Distribution Histogram</span>
-                <span class="text-[10px] font-mono text-slate-400">40k Sims</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Margin Classification Legend -->
-          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3.5">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Margin Classifications</span>
-              <span class="text-[10px] font-mono bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">By Median μ_s</span>
-            </div>
-            <p class="text-[11px] leading-relaxed text-slate-500">
-              Categorizations are determined strictly by <strong>expected median margin (μ<sub>s</sub>)</strong>, not win probability %.
-            </p>
-
-            <!-- Color Matrix Table -->
-            <div class="space-y-2 text-xs">
-              <div class="grid grid-cols-4 gap-1 text-[10px] font-semibold text-slate-500 text-center pb-1 border-b border-slate-100">
-                <div class="text-left">Party</div>
-                <div>Solid<br><span class="font-mono text-[9px]">≥12%</span></div>
-                <div>Likely<br><span class="font-mono text-[9px]">5–12%</span></div>
-                <div>Lean/Tilt<br><span class="font-mono text-[9px]">&lt;5% / &lt;1%</span></div>
-              </div>
-
-              <!-- Dem Row -->
-              <div class="grid grid-cols-4 gap-1.5 items-center">
-                <span class="font-semibold text-slate-700 text-[11px]">Dem</span>
-                <div class="h-5 rounded bg-[#1a3a8a]" title="Solid Dem (≥12%)"></div>
-                <div class="h-5 rounded bg-[#2b6cb0]" title="Likely Dem (5-12%)"></div>
-                <div class="grid grid-cols-2 gap-1">
-                  <div class="h-5 rounded bg-[#4299e1]" title="Lean Dem (1-5%)"></div>
-                  <div class="h-5 rounded bg-[#90cdf4]" title="Tilt Dem (<1%)"></div>
-                </div>
-              </div>
-
-              <!-- GOP Row -->
-              <div class="grid grid-cols-4 gap-1.5 items-center">
-                <span class="font-semibold text-slate-700 text-[11px]">GOP</span>
-                <div class="h-5 rounded bg-[#991b1b]" title="Solid GOP (≥12%)"></div>
-                <div class="h-5 rounded bg-[#c53030]" title="Likely GOP (5-12%)"></div>
-                <div class="grid grid-cols-2 gap-1">
-                  <div class="h-5 rounded bg-[#e53e3e]" title="Lean GOP (1-5%)"></div>
-                  <div class="h-5 rounded bg-[#feb2b2]" title="Tilt GOP (<1%)"></div>
-                </div>
-              </div>
-
-              <!-- Ind Row -->
-              <div class="grid grid-cols-4 gap-1.5 items-center">
-                <span class="font-semibold text-slate-700 text-[11px]">Ind</span>
-                <div class="h-5 rounded bg-[#4c2882]" title="Solid Ind (≥12%)"></div>
-                <div class="h-5 rounded bg-[#6e4c9e]" title="Likely Ind (5-12%)"></div>
-                <div class="grid grid-cols-2 gap-1">
-                  <div class="h-5 rounded bg-[#987bb8]" title="Lean Ind (1-5%)"></div>
-                  <div class="h-5 rounded bg-[#bfa8d4]" title="Tilt Ind (<1%)"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Hatch & Uncontested Legend -->
-            <div class="pt-2 border-t border-slate-100 space-y-2 text-[11px] text-slate-600">
-              <div class="flex items-center space-x-2.5">
-                <svg class="w-6 h-4 rounded border border-slate-400 flex-shrink-0" viewBox="0 0 24 16">
-                  <rect width="24" height="16" fill="#4299e1"></rect>
-                  <path d="M-4,4 l8,-8 M0,16 l16,-16 M12,20 l12,-12" stroke="#ffffff" stroke-width="2" stroke-opacity="0.75"></path>
-                </svg>
-                <span><strong>Diagonal Hatch:</strong> Projected party flip from current incumbent</span>
-              </div>
-              <div class="flex items-center space-x-2.5">
-                <span class="w-6 h-4 rounded bg-[#e2e8f0] border border-slate-300 flex-shrink-0"></span>
-                <span><strong>Gray:</strong> No Senate race in 2026 (65 baseline seats)</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Special Rules Watch Card (GA Runoff, AK/ME RCV, Ind Challengers) -->
-          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-            <div class="text-xs font-bold uppercase tracking-wider text-slate-700">Statutory & Special Rules Watch</div>
-            <div id="statutory-watch-list" class="space-y-2.5 text-xs">
-              <!-- Populated by JS -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Center/Right Area: Choropleth Map & Distribution Histogram -->
-        <div class="lg:col-span-9 space-y-6">
-
-          <!-- Map Container Card -->
-          <div id="card-map-view" class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 relative">
-            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <div>
-                <h2 class="text-base font-bold text-slate-900">2026 Senate Forecast Map</h2>
-                <p class="text-xs text-slate-500">Hover over any contested state for candidate vote shares, PVI, 2024 presidential baseline, and RCV/Runoff rules.</p>
-              </div>
-              <div class="flex items-center space-x-2 text-xs">
-                <span class="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-medium"> Projected Flips: <strong id="flip-count-badge" class="font-mono text-slate-900">--</strong></span>
-              </div>
-            </div>
-
-            <!-- Responsive SVG Map Wrapper -->
-            <div id="map-container" class="w-full relative overflow-hidden flex justify-center items-center min-h-[420px] sm:min-h-[500px]">
-              <svg id="senate-map-svg" viewBox="0 0 975 610" class="w-full h-auto max-h-[560px]"></svg>
-            </div>
-
-            <!-- Quick Battleground Pills Footer -->
-            <div class="mt-4 pt-4 border-t border-slate-100">
-              <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Top Tipping-Point Battlegrounds (Decisive 50th Seat)</div>
-              <div id="tipping-pills-row" class="flex flex-wrap gap-2">
-                <!-- Populated by JS -->
-              </div>
-            </div>
-          </div>
-
-          <!-- Seat Distribution Histogram Card -->
-          <div id="card-hist-view" class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6">
-            <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-              <div>
-                <h3 class="text-base font-bold text-slate-900">Simulated Democratic + Independent Caucus Seat Distribution</h3>
-                <p class="text-xs text-slate-500">Frequency across 40,000 correlated Cholesky Monte Carlo trials. Vertical dashed line marks 50-seat majority threshold.</p>
-              </div>
-              <div class="flex items-center space-x-3 text-xs font-mono bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-                <span>80% Credible Interval: <strong id="hist-ci-badge" class="text-slate-900">46 – 51 seats</strong></span>
-              </div>
-            </div>
-            <div id="histogram-container" class="w-full h-64 relative">
-              <svg id="histogram-svg" class="w-full h-full"></svg>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </section>
-
-    <!-- Interactive Contested Races Table Section -->
-    <section id="section-races" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div class="p-5 sm:p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 class="text-lg font-bold text-slate-900">All 35 Contested Senate Races</h2>
-          <p class="text-xs text-slate-500">Click any column header to sort. Filter by region, party, or rating tier.</p>
-        </div>
-
-        <!-- Search & Filter Controls -->
-        <div class="flex flex-wrap items-center gap-2.5">
-          <input id="race-search-input" type="text" placeholder="Search state or candidate..." class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 w-48" />
-          <select id="region-filter-select" class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
-            <option value="ALL">All Regions (35)</option>
-            <option value="South">South</option>
-            <option value="Midwest">Midwest</option>
-            <option value="West">West</option>
-            <option value="Northeast">Northeast</option>
-          </select>
-          <select id="competitive-filter-select" class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
-            <option value="ALL">All Races</option>
-            <option value="COMPETITIVE">Competitive (|Margin| &lt; 12%)</option>
-            <option value="FLIPS">Projected Flips Only</option>
-            <option value="IND">Independent Challengers</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse text-xs">
-          <thead>
-            <tr class="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200 select-none">
-              <th data-sort="state_name" class="py-3 px-4 cursor-pointer hover:text-slate-900">State ↕</th>
-              <th data-sort="region" class="py-3 px-3 cursor-pointer hover:text-slate-900">Region ↕</th>
-              <th class="py-3 px-4">Challenger / Dem</th>
-              <th class="py-3 px-4">GOP Candidate</th>
-              <th data-sort="cook_pvi" class="py-3 px-3 cursor-pointer hover:text-slate-900 text-right">Voter Index (PVI) ↕</th>
-              <th data-sort="pres_2024" class="py-3 px-3 cursor-pointer hover:text-slate-900 text-right">2024 Pres ↕</th>
-              <th data-sort="rating" class="py-3 px-3 cursor-pointer hover:text-slate-900 text-center">Rating (By μ_s) ↕</th>
-              <th data-sort="median_margin" class="py-3 px-3 cursor-pointer hover:text-slate-900 text-right">Expected Margin ↕</th>
-              <th data-sort="win_prob" class="py-3 px-3 cursor-pointer hover:text-slate-900 text-right">Leader Win Prob ↕</th>
-              <th data-sort="tipping_point_prob" class="py-3 px-3 cursor-pointer hover:text-slate-900 text-right">Tipping Pt % ↕</th>
-              <th data-sort="total_spend_m" class="py-3 px-4 cursor-pointer hover:text-slate-900 text-right">Spend ($M) ↕</th>
-            </tr>
-          </thead>
-          <tbody id="races-table-body" class="divide-y divide-slate-100 text-slate-700">
-            <!-- Populated dynamically via JS -->
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Methodology Section -->
-    <section id="section-methodology" class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
-      <div class="border-b border-slate-200 pb-4 flex items-center justify-between">
-        <div>
-          <span class="text-xs font-bold uppercase tracking-wider text-blue-700">Model Architecture & Technical Specification</span>
-          <h2 class="text-xl font-extrabold text-slate-900 mt-0.5">2026 U.S. Senate Forecasting Methodology</h2>
-        </div>
-        <span class="text-xs font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600">v2.6 Cross-Sectional Engine</span>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-xs leading-relaxed text-slate-600">
-        <!-- Card 1: 85/15 Polling & Fundamentals Blend -->
-        <div class="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
-          <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm">
-            <span class="w-6 h-6 rounded bg-blue-600 text-white flex items-center justify-center font-mono text-xs">1</span>
-            <span>85% Polling / 15% Fundamentals</span>
-          </div>
-          <p>
-            For every polled race, the expected margin <span class="font-mono text-slate-800">μ_s</span> blends time-decayed, voter-screen-adjusted polling composites (<strong>85% weight</strong>) with structural race fundamentals (<strong>15% weight</strong>):
-          </p>
-          <div class="bg-white p-2.5 rounded border border-slate-200 font-mono text-[11px] text-slate-800">
-            μ_s = 0.85 · Margin_poll + 0.15 · Margin_fund
-          </div>
-          <p>
-            Structural fundamentals (<span class="font-mono">Margin_fund</span>) combine state PVI, national Generic Ballot (<span class="font-mono">D+8.8% × Elasticity</span>), strict incumbency (<span class="font-mono">±2.5%</span> <em>only</em> if a sitting Senator is running; <span class="font-mono">0.0%</span> in open seats), candidate office tiers, and controversy deductions.
-          </p>
-        </div>
-
-        <!-- Card 2: Cycle-Weighted Voter Index & Dynamic Voter Screens -->
-        <div class="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
-          <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm">
-            <span class="w-6 h-6 rounded bg-blue-600 text-white flex items-center justify-center font-mono text-xs">2</span>
-            <span>0.65 / 0.35 Partisan Voter Index</span>
-          </div>
-          <p>
-            Rather than an equal 50/50 split, each state's baseline Partisan Voter Index (PVI) weights the 2024 presidential two-party margin deviation at <strong>65%</strong> and the 2020 deviation at <strong>35%</strong>:
-          </p>
-          <div class="bg-white p-2.5 rounded border border-slate-200 font-mono text-[11px] text-slate-800">
-            PVI_s = 0.65 · Dev_2024 + 0.35 · Dev_2020
-          </div>
-          <p>
-            Registered Voter (RV) and Adult (A) polls are dynamically adjusted using an exponential spending saturation dampener <span class="font-mono">exp(-S_total / 150)</span> and a bounded relative spending turnout skew <span class="font-mono">0.5 · tanh(0.5 · ln(S_D / S_R))</span>.
-          </p>
-        </div>
-
-        <!-- Card 3: Cholesky Correlated Covariance Matrix -->
-        <div class="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
-          <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm">
-            <span class="w-6 h-6 rounded bg-blue-600 text-white flex items-center justify-center font-mono text-xs">3</span>
-            <span>Cholesky Covariance &amp; 40k Trials</span>
-          </div>
-          <p>
-            Election errors are correlated across states. We construct a 35×35 covariance matrix <span class="font-mono">Σ</span> combining three orthogonal variance components:
-          </p>
-          <ul class="list-disc list-inside space-y-1 text-slate-700">
-            <li><strong>National Wave Error:</strong> <span class="font-mono">σ_nat = 2.0%</span></li>
-            <li><strong>Regional Cluster Error:</strong> <span class="font-mono">σ_reg = 1.5%</span></li>
-            <li><strong>Idiosyncratic Noise:</strong> <span class="font-mono">σ_idio = 2.5%</span> (incumbents) to <span class="font-mono">4.0%</span> (open seats)</li>
-          </ul>
-          <p>
-            Using Cholesky decomposition (<span class="font-mono">Σ = L·Lᵀ</span>), we draw 40,000 correlated multivariate normal outcome vectors <span class="font-mono">Y = μ + L·Z</span>.
-          </p>
-        </div>
-
-        <!-- Card 4: Statutory RCV & Runoff Rules -->
-        <div class="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
-          <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm">
-            <span class="w-6 h-6 rounded bg-purple-700 text-white flex items-center justify-center font-mono text-xs">4</span>
-            <span>RCV (AK, ME) &amp; GA Runoff Rules</span>
-          </div>
-          <p>
-            <strong>Georgia Majority Rule:</strong> Requires &gt;50.0% to win outright. Accounting for minor third-party vote share, simulated trials where <span class="font-mono">|Margin| &lt; 2.5%</span> are flagged as advancing to a December runoff.
-          </p>
-          <p>
-            <strong>Alaska &amp; Maine RCV:</strong> First-choice major candidate vote shares are scaled by <span class="font-mono">first_choice_share_major</span> (<strong>0.94</strong> in AK, <strong>0.98</strong> in ME). If neither crosses 50% in Round 1, non-exhausted minor ballots transfer according to empirical preference flows (75% GOP flow in AK Top-4; 55% Dem flow in ME).
-          </p>
-        </div>
-
-        <!-- Card 5: Independent Challengers & 3-Way Splits -->
-        <div class="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
-          <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm">
-            <span class="w-6 h-6 rounded bg-purple-700 text-white flex items-center justify-center font-mono text-xs">5</span>
-            <span>Independent Challenger Modeling</span>
-          </div>
-          <p>
-            In states where Democrats stood down or lack a major contender (<strong>Nebraska</strong> with Dan Osborn, <strong>Idaho</strong> with Todd Achilles, <strong>South Dakota</strong> with Brian Bengs), the Independent is modeled as the primary non-GOP challenger and rendered in a 4-tier purple palette when leading.
-          </p>
-          <p>
-            In <strong>Montana</strong>, where Independent Seth Bodnar runs alongside a Democratic nominee on the ballot, a calibrated 7.0% coalition split penalty accounts for ballot-line leakage.
-          </p>
-        </div>
-
-        <!-- Card 6: Chamber Baseline & Majority Threshold -->
-        <div class="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
-          <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm">
-            <span class="w-6 h-6 rounded bg-slate-800 text-white flex items-center justify-center font-mono text-xs">6</span>
-            <span>34D – 31R Non-Contested Baseline</span>
-          </div>
-          <p>
-            Of the 100 U.S. Senate seats, <strong>65 seats</strong> are not up for election in 2026: <strong>34 held by Democrats/caucusing Independents</strong> and <strong>31 held by Republicans</strong>.
-          </p>
-          <p>
-            To win outright Senate control (51 seats), Democrats/Independents must win at least 17 of the 35 contested seats (or 16 for a 50–50 chamber split), while Republicans need 20 of the 35 contested seats to reach 51.
-          </p>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Dynamic Floating Hover Infobox (Tooltip) -->
-  <div id="map-tooltip" class="tooltip-card fixed z-50 hidden w-72 rounded-xl border border-slate-200/90 p-3.5 text-xs text-slate-800">
-    <!-- Dynamically populated by docs/js/app.js -->
-  </div>
-
-  <!-- Footer -->
-  <footer class="bg-white border-t border-slate-200 mt-12 py-6 text-xs text-slate-500">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div>
-        <strong>2026 U.S. Senate Forecasting Engine</strong> • Cholesky Monte Carlo Simulation &amp; Polling Aggregation
-      </div>
-      <div class="font-mono text-[11px]">
-        Categorizations by Median Expected Margin (μ_s) • 34D / 31R Baseline
-      </div>
-    </div>
-  </footer>
-
-  <!-- Main Application Script -->
-  <script src="./js/app.js"></script>
+    <!-- Main Application Script -->
+    <script src="./js/app.js"></script>
 </body>
+
 </html>
