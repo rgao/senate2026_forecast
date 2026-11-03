@@ -19,6 +19,3 @@ data/state_voter_index.csv
 # Keep essential schema files tracked (if needed)
 !data/environment.json
 !data/senate_class2.json
-
-# Generated simulation outputs
-docs/data/*.json

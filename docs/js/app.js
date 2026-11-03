@@ -227,28 +227,63 @@ function computeVoteShares(st, race) {
 // ---------------------------------------------------------
 async function initDashboard() {
   try {
-    // 1. Load simulation results
-    const simRes = await fetch("./data/sim_results.json");
-    simData = await simRes.json();
+    // Determine resilient base path for GitHub Pages subfolder repositories
+    const baseHref = window.location.pathname.endsWith('/') 
+      ? window.location.pathname 
+      : window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
 
-    // 2. Load state voter index CSV (try ../data/state_voter_index.csv then ./data/state_voter_index.csv)
-    let csvText = "";
-    try {
-      const csvRes = await fetch("../data/state_voter_index.csv");
-      if (csvRes.ok) csvText = await csvRes.text();
-    } catch (e) {
-      // ignore
-    }
-    if (!csvText) {
+    const candidateJsonUrls = [
+      `${baseHref}data/sim_results.json`,
+      "./data/sim_results.json",
+      "data/sim_results.json"
+    ];
+
+    let simRes = null;
+    for (const url of candidateJsonUrls) {
       try {
-        const csvResFallback = await fetch("./data/state_voter_index.csv");
-        if (csvResFallback.ok) csvText = await csvResFallback.text();
+        const res = await fetch(url);
+        if (res.ok) {
+          const contentType = res.headers.get("content-type") || "";
+          if (contentType.includes("json") || contentType.includes("octet-stream") || contentType.includes("text/plain")) {
+            simRes = res;
+            break;
+          }
+        }
       } catch (e) {
-        // ignore
+        // try next
       }
     }
 
-    if (csvText) {
+    if (!simRes) {
+      throw new Error("Could not load sim_results.json from /data/. Make sure docs/data/sim_results.json is committed to Git and not ignored by .gitignore!");
+    }
+
+    simData = await simRes.json();
+
+    // Load state voter index CSV
+    const candidateCsvUrls = [
+      `${baseHref}data/state_voter_index.csv`,
+      "./data/state_voter_index.csv",
+      "data/state_voter_index.csv",
+      "../data/state_voter_index.csv"
+    ];
+
+    let csvText = "";
+    for (const url of candidateCsvUrls) {
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          csvText = await res.text();
+          if (csvText && !csvText.startsWith("<!DOCTYPE")) {
+            break;
+          }
+        }
+      } catch (e) {
+        // try next
+      }
+    }
+
+    if (csvText && !csvText.startsWith("<!DOCTYPE")) {
       const parsedCsv = d3.csvParse(csvText);
       parsedCsv.forEach(row => {
         const stCode = (row.state || row[""] || "").trim();
@@ -295,6 +330,10 @@ async function initDashboard() {
 
   } catch (err) {
     console.error("Failed to initialize Senate Forecast Dashboard:", err);
+    const banner = document.getElementById("chamber-spectrum-bar");
+    if (banner) {
+      banner.innerHTML = `<div class="w-full h-full bg-amber-100 text-amber-900 flex items-center justify-center px-4 text-xs font-semibold">⚠️ ${err.message}</div>`;
+    }
   }
 }
 
