@@ -1,0 +1,24 @@
+# Virtual environment
+.venv/
+__pycache__/
+*.py[cod]
+
+# Raw inputs and intermediate CSVs/JSONs (keep only repo skeletons if desired)
+data/
+data/*
+data/*.csv
+data/*.json
+data/environment.json
+data/race_margins.json
+data/senate_class2.json
+data/pres*.csv
+data/pollsterdata*.csv
+data/stateelasticity.csv
+data/state_voter_index.csv
+
+# Keep essential schema files tracked (if needed)
+!data/environment.json
+!data/senate_class2.json
+
+# Generated simulation outputs
+docs/data/*.json
