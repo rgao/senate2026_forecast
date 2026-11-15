@@ -1,19 +1,6 @@
 /**
  * docs/js/app.js
  * 2026 U.S. Senate Forecasting Engine — Interactive Front-End Logic
- *
- * Features:
- * - Fetches ./data/sim_results.json and ../data/state_voter_index.csv (with fallback to ./data/state_voter_index.csv)
- * - Classifies all 35 contested races strictly by Expected Median Margin (mu_s):
- *     * Tilt:   |Margin| < 1.0%
- *     * Lean:   1.0% <= |Margin| < 5.0%
- *     * Likely: 5.0% <= |Margin| < 12.0%
- *     * Solid:  |Margin| >= 12.0%
- * - Supports 4-shade palettes for Democrats (Blue), Republicans (Red), and Independent frontrunners (Purple)
- * - Renders diagonal SVG hatch overlay (<pattern id="flip-hatch">) on seats projected to flip parties
- * - Compact high-density hover tooltip displaying Candidate shares, Win Prob, Cook PVI (0.65/0.35),
- *   2024 Presidential baseline margin, Campaign Spend, GA Runoff probability, and AK/ME RCV round-by-round breakdown
- * - Interactive 100-seat chamber balance bar, 40,000-trial seat distribution histogram, and sortable table
  */
 
 // ---------------------------------------------------------
@@ -21,22 +8,22 @@
 // ---------------------------------------------------------
 const COLORS = {
   DEM: {
-    Solid: "#1a3a8a",
+    Solid:  "#1a3a8a",
     Likely: "#2b6cb0",
-    Lean: "#4299e1",
-    Tilt: "#90cdf4"
+    Lean:   "#4299e1",
+    Tilt:   "#90cdf4"
   },
   GOP: {
-    Solid: "#991b1b",
+    Solid:  "#991b1b",
     Likely: "#c53030",
-    Lean: "#e53e3e",
-    Tilt: "#feb2b2"
+    Lean:   "#e53e3e",
+    Tilt:   "#feb2b2"
   },
   IND: {
-    Solid: "#4c2882",
+    Solid:  "#4c2882",
     Likely: "#6e4c9e",
-    Lean: "#987bb8",
-    Tilt: "#bfa8d4"
+    Lean:   "#987bb8",
+    Tilt:   "#bfa8d4"
   },
   UNCONTESTED: "#e2e8f0"
 };
@@ -68,7 +55,6 @@ const STATE_NAMES_FULL = {
   VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming"
 };
 
-// Statutory RCV parameters for Round 1 vs Final Round display
 const RCV_STATUTORY_META = {
   AK: {
     system: "Top-4 Ranked-Choice Voting",
@@ -90,7 +76,7 @@ const RCV_STATUTORY_META = {
 let simData = null;
 let voterIndexMap = {};
 let enrichedRaces = [];
-let currentSort = { key: "tipping_point_prob", asc: false };
+let currentSort = { key: "competitiveness", asc: true };
 
 // ---------------------------------------------------------
 // 2. Helper & Classification Functions
@@ -106,8 +92,6 @@ function cleanCandidateName(candName) {
 
 /**
  * Classifies a race strictly by Expected Median Margin (mu_s), NOT win probability.
- * Margin > 0 => Dem or Independent Challenger leads
- * Margin < 0 => GOP leads
  */
 function classifyByMargin(medianMargin, demCandName) {
   const absM = Math.abs(medianMargin);
@@ -132,18 +116,14 @@ function classifyByMargin(medianMargin, demCandName) {
     partyLabel,
     label: `${tier} ${partyLabel}`,
     color: COLORS[leadingParty][tier],
-    sortRank: medianMargin // signed for sorting D -> R
+    sortRank: medianMargin
   };
 }
 
-/**
- * Determines if the projected winner represents a party flip from the current incumbent.
- */
 function isProjectedFlip(race) {
   const winnerParty = race.median_margin >= 0
     ? (isIndependentCandidate(race.dem_candidate) ? "IND" : "DEM")
     : "GOP";
-  // Note: If an Independent unseats a GOP incumbent, or DEM unseats GOP, or GOP unseats DEM
   return winnerParty !== race.incumbent_party;
 }
 
@@ -170,9 +150,6 @@ function formatPres2024(margin2024) {
   return margin2024 >= 0 ? `Harris +${absVal}%` : `Trump +${absVal}%`;
 }
 
-/**
- * Computes estimated candidate vote shares & RCV round-by-round breakdown if applicable.
- */
 function computeVoteShares(st, race) {
   const m = race.median_margin;
   if (st === "AK" || st === "ME") {
@@ -182,7 +159,6 @@ function computeVoteShares(st, race) {
     const gopR1 = ((0.50 - m / 200.0) * firstMajor) * 100;
     const minorR1 = (1.0 - firstMajor) * 100;
 
-    // Simulated final round after non-exhausted transfers
     const activeMinor = minorR1 * (1.0 - meta.minor_exhaust_rate);
     let demFinalRaw, gopFinalRaw;
     if (st === "AK") {
@@ -209,7 +185,6 @@ function computeVoteShares(st, race) {
     };
   }
 
-  // Standard or Georgia race (assume ~1.6% minor/write-in share in GA, ~1.2% elsewhere)
   const majorPool = st === "GA" ? 98.0 : 98.8;
   const demShare = (0.50 + m / 200.0) * majorPool;
   const gopShare = (0.50 - m / 200.0) * majorPool;
@@ -227,9 +202,8 @@ function computeVoteShares(st, race) {
 // ---------------------------------------------------------
 async function initDashboard() {
   try {
-    // Determine resilient base path for GitHub Pages subfolder repositories
-    const baseHref = window.location.pathname.endsWith('/') 
-      ? window.location.pathname 
+    const baseHref = window.location.pathname.endsWith('/')
+      ? window.location.pathname
       : window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
 
     const candidateJsonUrls = [
@@ -255,12 +229,11 @@ async function initDashboard() {
     }
 
     if (!simRes) {
-      throw new Error("Could not load sim_results.json from /data/. Make sure docs/data/sim_results.json is committed to Git and not ignored by .gitignore!");
+      throw new Error("Could not load sim_results.json from /data/. Make sure docs/data/sim_results.json is committed to Git.");
     }
 
     simData = await simRes.json();
 
-    // Load state voter index CSV
     const candidateCsvUrls = [
       `${baseHref}data/state_voter_index.csv`,
       "./data/state_voter_index.csv",
@@ -298,7 +271,6 @@ async function initDashboard() {
       });
     }
 
-    // 3. Enrich races array
     const projections = simData.state_projections || {};
     enrichedRaces = Object.keys(projections).map(st => {
       const r = projections[st];
@@ -315,16 +287,15 @@ async function initDashboard() {
         elasticity: vi.elasticity || 1.0,
         classification,
         isFlip: flip,
-        leaderWinProb
+        leaderWinProb,
+        competitiveness: Math.abs(r.median_margin)
       };
     });
 
-    // 4. Render UI Components
     renderTopBanner();
     renderStatutoryWatchSidebar();
     await renderChoroplethMap();
     renderSeatHistogram();
-    renderTippingPointPills();
     renderRacesTable();
     setupEventListeners();
 
@@ -332,7 +303,7 @@ async function initDashboard() {
     console.error("Failed to initialize Senate Forecast Dashboard:", err);
     const banner = document.getElementById("chamber-spectrum-bar");
     if (banner) {
-      banner.innerHTML = `<div class="w-full h-full bg-amber-100 text-amber-900 flex items-center justify-center px-4 text-xs font-semibold">⚠️ ${err.message}</div>`;
+      banner.innerHTML = `<div class="w-full h-full bg-amber-100 text-amber-900 flex items-center justify-center px-4 text-xs font-semibold">${err.message}</div>`;
     }
   }
 }
@@ -345,22 +316,15 @@ function renderTopBanner() {
   const meta = simData.metadata;
 
   document.getElementById("dem-majority-prob").textContent = `${(cc.p_dem_majority * 100).toFixed(1)}%`;
-  const dem50El = document.getElementById("dem-50-prob");
-  if (dem50El && cc.p_dem_50_plus !== undefined) dem50El.textContent = `${(cc.p_dem_50_plus * 100).toFixed(1)}% chance of ≥50 seats`;
   document.getElementById("gop-majority-prob").textContent = `${(cc.p_gop_majority * 100).toFixed(1)}%`;
   document.getElementById("dem-expected-seats").textContent = cc.expected_dem_seats.toFixed(1);
   document.getElementById("gop-expected-seats").textContent = cc.expected_gop_seats.toFixed(1);
 
-  const trialsEl = document.getElementById("meta-trials");
-  if (trialsEl && meta && meta.n_trials) {
-    trialsEl.textContent = `${meta.n_trials.toLocaleString()} Trials`;
-  }
   const gcbEl = document.getElementById("meta-gcb");
   if (gcbEl && meta && meta.generic_ballot_margin !== undefined) {
     gcbEl.textContent = `GCB: D+${meta.generic_ballot_margin.toFixed(1)}%`;
   }
 
-  // Count seats across spectrum buckets (including 34 Dem baseline in Solid D and 31 GOP baseline in Solid R)
   const counts = {
     D_Solid: 34,
     D_Likely: 0,
@@ -385,15 +349,15 @@ function renderTopBanner() {
   });
 
   const segments = [
-    { key: "D_Solid", label: "Solid D (inc. 34 base)", count: counts.D_Solid, color: COLORS.DEM.Solid, textColor: "#ffffff" },
-    { key: "D_Likely", label: "Likely D", count: counts.D_Likely, color: COLORS.DEM.Likely, textColor: "#ffffff" },
-    { key: "D_Lean", label: "Lean D", count: counts.D_Lean, color: COLORS.DEM.Lean, textColor: "#ffffff" },
-    { key: "D_Tilt", label: "Tilt D", count: counts.D_Tilt, color: COLORS.DEM.Tilt, textColor: "#0f172a" },
-    { key: "I_Any", label: "Leading Ind", count: counts.I_Any, color: COLORS.IND.Lean, textColor: "#ffffff" },
-    { key: "R_Tilt", label: "Tilt R", count: counts.R_Tilt, color: COLORS.GOP.Tilt, textColor: "#0f172a" },
-    { key: "R_Lean", label: "Lean R", count: counts.R_Lean, color: COLORS.GOP.Lean, textColor: "#ffffff" },
-    { key: "R_Likely", label: "Likely R", count: counts.R_Likely, color: COLORS.GOP.Likely, textColor: "#ffffff" },
-    { key: "R_Solid", label: "Solid R (inc. 31 base)", count: counts.R_Solid, color: COLORS.GOP.Solid, textColor: "#ffffff" }
+    { key: "D_Solid",  label: "Solid D (inc. 34 not up)", count: counts.D_Solid,  color: COLORS.DEM.Solid,  textColor: "#ffffff" },
+    { key: "D_Likely", label: "Likely D",                 count: counts.D_Likely, color: COLORS.DEM.Likely, textColor: "#ffffff" },
+    { key: "D_Lean",   label: "Lean D",                   count: counts.D_Lean,   color: COLORS.DEM.Lean,   textColor: "#ffffff" },
+    { key: "D_Tilt",   label: "Tilt D",                   count: counts.D_Tilt,   color: COLORS.DEM.Tilt,   textColor: "#141413" },
+    { key: "I_Any",    label: "Leading Ind",              count: counts.I_Any,    color: COLORS.IND.Lean,   textColor: "#ffffff" },
+    { key: "R_Tilt",   label: "Tilt R",                   count: counts.R_Tilt,   color: COLORS.GOP.Tilt,   textColor: "#141413" },
+    { key: "R_Lean",   label: "Lean R",                   count: counts.R_Lean,   color: COLORS.GOP.Lean,   textColor: "#ffffff" },
+    { key: "R_Likely", label: "Likely R",                 count: counts.R_Likely, color: COLORS.GOP.Likely, textColor: "#ffffff" },
+    { key: "R_Solid",  label: "Solid R (inc. 31 not up)", count: counts.R_Solid,  color: COLORS.GOP.Solid,  textColor: "#ffffff" }
   ];
 
   const barEl = document.getElementById("chamber-spectrum-bar");
@@ -405,7 +369,7 @@ function renderTopBanner() {
     div.style.width = `${seg.count}%`;
     div.style.backgroundColor = seg.color;
     div.style.color = seg.textColor;
-    div.className = "h-full flex items-center justify-center font-mono text-xs font-bold border-r border-white/20 last:border-r-0 transition-all duration-300";
+    div.className = "h-full flex items-center justify-center font-mono text-xs font-semibold border-r border-white/25 last:border-r-0 transition-all duration-200";
     div.title = `${seg.label}: ${seg.count} seat${seg.count > 1 ? "s" : ""}`;
     if (seg.count >= 2) {
       div.textContent = seg.count;
@@ -413,15 +377,16 @@ function renderTopBanner() {
     barEl.appendChild(div);
   });
 
-  // Update Flip Count Badge
   const flips = enrichedRaces.filter(r => r.isFlip);
   const flipNames = flips.map(r => `${r.state} (${r.classification.partyLabel})`).join(", ");
   const flipBadge = document.getElementById("flip-count-badge");
-  flipBadge.textContent = flips.length > 0 ? `${flips.length} (${flipNames})` : "0";
+  if (flipBadge) {
+    flipBadge.textContent = flips.length > 0 ? `${flips.length} (${flipNames})` : "0";
+  }
 }
 
 // ---------------------------------------------------------
-// 5. Render Statutory & Special Rules Watch Sidebar
+// 5. Render Statutory Rules Watch Sidebar
 // ---------------------------------------------------------
 function renderStatutoryWatchSidebar() {
   const container = document.getElementById("statutory-watch-list");
@@ -437,15 +402,15 @@ function renderStatutoryWatchSidebar() {
 
   if (ga) {
     items.push(`
-      <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80 space-y-1">
+      <div class="pb-2.5 border-b border-neutral-200 space-y-1">
         <div class="flex items-center justify-between">
-          <span class="font-bold text-slate-900">Georgia (&gt;50% Rule)</span>
-          <span class="px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-amber-100 text-amber-900 rounded">
+          <span class="font-bold text-ink">Georgia (&gt;50% Rule)</span>
+          <span class="px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-amber-100 text-amber-950">
             Runoff: ${(ga.runoff_prob * 100).toFixed(1)}%
           </span>
         </div>
-        <p class="text-[11px] text-slate-600">
-          Ossoff leads <strong class="font-mono">${formatSignedMargin(ga.median_margin, ga.dem_candidate)}</strong>. If margin &lt; 2.5% with Libertarian share, advances to Dec runoff.
+        <p class="text-[11px] text-neutral-600 leading-relaxed">
+          Ossoff leads <strong class="font-mono text-ink">${formatSignedMargin(ga.median_margin, ga.dem_candidate)}</strong>. Margins under 2.5% trigger a December runoff.
         </p>
       </div>
     `);
@@ -453,16 +418,16 @@ function renderStatutoryWatchSidebar() {
 
   if (ak && me) {
     items.push(`
-      <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80 space-y-1">
+      <div class="pb-2.5 border-b border-neutral-200 space-y-1">
         <div class="flex items-center justify-between">
-          <span class="font-bold text-slate-900">Alaska &amp; Maine RCV</span>
-          <span class="px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-blue-100 text-blue-900 rounded">
+          <span class="font-bold text-ink">Alaska &amp; Maine RCV</span>
+          <span class="px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-neutral-100 text-neutral-700">
             Instant Runoff
           </span>
         </div>
-        <p class="text-[11px] text-slate-600">
-          <strong>AK:</strong> 94% major R1 share; minor conservative transfers favor Sullivan (<strong class="font-mono">${formatSignedMargin(ak.median_margin, ak.dem_candidate)}</strong>).<br>
-          <strong>ME:</strong> 98% major R1 share; Jackson leads Collins <strong class="font-mono">${formatSignedMargin(me.median_margin, me.dem_candidate)}</strong>.
+        <p class="text-[11px] text-neutral-600 leading-relaxed">
+          <strong>AK:</strong> 94% major R1 share; minor conservative transfers favor Sullivan (<strong class="font-mono text-ink">${formatSignedMargin(ak.median_margin, ak.dem_candidate)}</strong>).<br>
+          <strong>ME:</strong> 98% major R1 share; Jackson leads Collins <strong class="font-mono text-ink">${formatSignedMargin(me.median_margin, me.dem_candidate)}</strong>.
         </p>
       </div>
     `);
@@ -470,16 +435,16 @@ function renderStatutoryWatchSidebar() {
 
   if (ne && mt) {
     items.push(`
-      <div class="p-2.5 rounded-lg bg-purple-50/70 border border-purple-200/80 space-y-1">
+      <div class="space-y-1">
         <div class="flex items-center justify-between">
-          <span class="font-bold text-purple-950">Independent Challengers</span>
-          <span class="px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-purple-200 text-purple-900 rounded">
+          <span class="font-bold text-ink">Independent Challengers</span>
+          <span class="px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-purple-100 text-purple-950">
             4 States
           </span>
         </div>
-        <p class="text-[11px] text-purple-900/80">
-          <strong>NE:</strong> Dan Osborn (${formatSignedMargin(ne.median_margin, ne.dem_candidate)}) •
-          <strong>MT:</strong> Seth Bodnar (${formatSignedMargin(mt.median_margin, mt.dem_candidate)}, 3-way split) • plus ID &amp; SD.
+        <p class="text-[11px] text-neutral-600 leading-relaxed">
+          <strong>NE:</strong> Dan Osborn (${formatSignedMargin(ne.median_margin, ne.dem_candidate)}) &bull;
+          <strong>MT:</strong> Seth Bodnar (${formatSignedMargin(mt.median_margin, mt.dem_candidate)}, 3-way split) &bull; plus ID &amp; SD.
         </p>
       </div>
     `);
@@ -495,7 +460,6 @@ async function renderChoroplethMap() {
   const svg = d3.select("#senate-map-svg");
   svg.selectAll("*").remove();
 
-  // Define diagonal SVG hatch pattern for party flips + drop shadow filter
   const defs = svg.append("defs");
 
   const pattern = defs.append("pattern")
@@ -511,10 +475,9 @@ async function renderChoroplethMap() {
     .attr("x2", 0)
     .attr("y2", 8)
     .attr("stroke", "#ffffff")
-    .attr("stroke-width", 2.8)
-    .attr("stroke-opacity", 0.72);
+    .attr("stroke-width", 2.6)
+    .attr("stroke-opacity", 0.75);
 
-  // Fetch US Albers-projected TopoJSON from US-Atlas CDN
   const usTopo = await d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-albers-10m.json");
   const statesGeo = topojson.feature(usTopo, usTopo.objects.states).features;
 
@@ -524,7 +487,6 @@ async function renderChoroplethMap() {
 
   const gStates = svg.append("g").attr("class", "states-layer");
 
-  // 1. Base colored state polygons
   gStates.selectAll("path.state-base")
     .data(statesGeo)
     .join("path")
@@ -543,8 +505,7 @@ async function renderChoroplethMap() {
       const race = raceByState[st];
       if (race) {
         d3.select(this).raise();
-        // Keep hatch and outline on top
-        svg.selectAll(".state-hatch-overlay, .state-flip-border, .state-labels-layer").raise();
+        svg.selectAll(".state-hatch-overlay, .state-labels-layer").raise();
         showMapTooltip(event, st, race);
       } else if (st) {
         showUncontestedTooltip(event, st);
@@ -557,7 +518,6 @@ async function renderChoroplethMap() {
       hideMapTooltip();
     });
 
-  // 2. Diagonal Hatch Overlay for Projected Party Flips
   const flipFeatures = statesGeo.filter(d => {
     const st = FIPS_TO_STATE[String(d.id).padStart(2, "0")];
     return raceByState[st] && raceByState[st].isFlip;
@@ -570,11 +530,10 @@ async function renderChoroplethMap() {
     .join("path")
     .attr("d", pathGenerator)
     .attr("fill", "url(#flip-hatch)")
-    .attr("stroke", "#0f172a")
-    .attr("stroke-width", 1.8)
+    .attr("stroke", "#141413")
+    .attr("stroke-width", 1.6)
     .attr("stroke-linejoin", "round");
 
-  // 3. State Postal Labels on Contested States
   const labelGroup = svg.append("g")
     .attr("class", "state-labels-layer pointer-events-none");
 
@@ -586,7 +545,6 @@ async function renderChoroplethMap() {
     const centroid = pathGenerator.centroid(d);
     if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) return;
 
-    // Skip tiny Northeast states where centroid text clutters, or offset slightly
     const smallStates = ["RI", "DE", "MA", "NJ", "NH"];
     if (smallStates.includes(st)) return;
 
@@ -595,12 +553,12 @@ async function renderChoroplethMap() {
       .attr("x", centroid[0])
       .attr("y", centroid[1] + 3)
       .attr("text-anchor", "middle")
-      .attr("font-family", "JetBrains Mono, monospace")
+      .attr("font-family", "IBM Plex Mono, monospace")
       .attr("font-size", "10px")
       .attr("font-weight", "700")
-      .attr("fill", isLightBg ? "#0f172a" : "#ffffff")
+      .attr("fill", isLightBg ? "#141413" : "#ffffff")
       .attr("paint-order", "stroke")
-      .attr("stroke", isLightBg ? "#ffffff" : "#0f172a")
+      .attr("stroke", isLightBg ? "#ffffff" : "#141413")
       .attr("stroke-width", isLightBg ? "2px" : "2.2px")
       .attr("stroke-opacity", 0.65)
       .text(st);
@@ -608,7 +566,7 @@ async function renderChoroplethMap() {
 }
 
 // ---------------------------------------------------------
-// 7. Interactive Hover Infobox (Tooltip)
+// 7. Interactive Hover Infobox (Tooltip — No Emojis, Clean Editorial)
 // ---------------------------------------------------------
 function showMapTooltip(event, st, race) {
   const tooltip = document.getElementById("map-tooltip");
@@ -623,7 +581,6 @@ function showMapTooltip(event, st, race) {
   const demTagText = isInd ? "I" : "D";
   const demShareColor = isInd ? "text-[#4c2882]" : "text-[#1a3a8a]";
 
-  // Order candidates so projected leader is on top
   const demLeads = race.median_margin >= 0;
   const leaderName = demLeads ? demClean : gopClean;
   const leaderProb = (race.leaderWinProb * 100).toFixed(1);
@@ -632,52 +589,51 @@ function showMapTooltip(event, st, race) {
     : "text-[#991b1b]";
 
   const rowDem = `
-    <div class="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-b-0">
+    <div class="flex items-center justify-between py-1.5 border-b border-neutral-100 last:border-b-0">
       <div class="flex items-center space-x-1.5">
-        <span class="font-semibold text-slate-900">${demClean}</span>
-        <span class="px-1.5 py-0.2 rounded text-[10px] font-bold text-white ${demTagBg}">${demTagText}</span>
-        ${race.incumbent_party === "DEM" ? '<span class="text-[9px] uppercase font-mono px-1 bg-slate-100 text-slate-500 rounded">Inc</span>' : ""}
+        <span class="font-semibold text-ink">${demClean}</span>
+        <span class="px-1.5 py-0.2 text-[10px] font-mono font-bold text-white ${demTagBg}">${demTagText}</span>
+        ${race.incumbent_party === "DEM" ? '<span class="text-[9px] uppercase font-mono px-1 bg-neutral-100 text-neutral-600">Inc</span>' : ""}
       </div>
-      <span class="font-mono font-bold ${demShareColor}">${shares.demShare}%</span>
+      <span class="font-mono font-bold tabular-nums ${demShareColor}">${shares.demShare}%</span>
     </div>
   `;
 
   const rowGop = `
-    <div class="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-b-0">
+    <div class="flex items-center justify-between py-1.5 border-b border-neutral-100 last:border-b-0">
       <div class="flex items-center space-x-1.5">
-        <span class="font-semibold text-slate-900">${gopClean}</span>
-        <span class="px-1.5 py-0.2 rounded text-[10px] font-bold text-white bg-[#c53030]">R</span>
-        ${race.incumbent_party === "GOP" ? '<span class="text-[9px] uppercase font-mono px-1 bg-slate-100 text-slate-500 rounded">Inc</span>' : ""}
+        <span class="font-semibold text-ink">${gopClean}</span>
+        <span class="px-1.5 py-0.2 text-[10px] font-mono font-bold text-white bg-[#c53030]">R</span>
+        ${race.incumbent_party === "GOP" ? '<span class="text-[9px] uppercase font-mono px-1 bg-neutral-100 text-neutral-600">Inc</span>' : ""}
       </div>
-      <span class="font-mono font-bold text-[#991b1b]">${shares.gopShare}%</span>
+      <span class="font-mono font-bold tabular-nums text-[#991b1b]">${shares.gopShare}%</span>
     </div>
   `;
 
   const orderedCandidateRows = demLeads ? (rowDem + rowGop) : (rowGop + rowDem);
 
-  // Statutory Callout Section (GA Runoff or AK/ME RCV)
   let statutoryHtml = "";
   if (st === "GA") {
     statutoryHtml = `
-      <div class="mt-2 pt-2 border-t border-amber-200/80 bg-amber-50/70 -mx-3.5 px-3.5 py-1.5 text-[10px] text-amber-950">
+      <div class="mt-2 pt-2 border-t border-amber-200 bg-amber-50/80 -mx-3.5 px-3.5 py-1.5 text-[10px] text-amber-950">
         <div class="flex items-center justify-between font-bold">
-          <span>⚖️ Georgia &gt;50% Runoff Rule</span>
-          <span class="font-mono bg-amber-200/80 px-1.5 py-0.5 rounded">${(race.runoff_prob * 100).toFixed(1)}% Runoff</span>
+          <span>Georgia &gt;50% Runoff Rule</span>
+          <span class="font-mono bg-amber-200/80 px-1.5 py-0.5 tabular-nums">${(race.runoff_prob * 100).toFixed(1)}% Runoff</span>
         </div>
-        <div class="text-amber-800 mt-0.5">
+        <div class="text-amber-900 mt-0.5">
           Requires &gt;50% to avoid Dec runoff (triggers if |Margin| &lt; 2.5%).
         </div>
       </div>
     `;
   } else if (shares.isRCV) {
     statutoryHtml = `
-      <div class="mt-2 pt-2 border-t border-blue-200/80 bg-blue-50/60 -mx-3.5 px-3.5 py-1.5 text-[10px] text-slate-800 space-y-1">
-        <div class="flex items-center justify-between font-bold text-blue-950">
-          <span>🗳️ ${RCV_STATUTORY_META[st].system}</span>
-          <span class="font-mono bg-blue-200/70 px-1.5 py-0.2 rounded">R1 Minor: ${shares.minorShare}%</span>
+      <div class="mt-2 pt-2 border-t border-neutral-200 bg-paper -mx-3.5 px-3.5 py-1.5 text-[10px] text-neutral-800 space-y-1">
+        <div class="flex items-center justify-between font-bold text-ink">
+          <span>${RCV_STATUTORY_META[st].system}</span>
+          <span class="font-mono bg-neutral-200 px-1.5 py-0.2 tabular-nums">R1 Minor: ${shares.minorShare}%</span>
         </div>
-        <div class="flex items-center justify-between font-mono text-[10px] pt-0.5">
-          <span class="text-slate-600">Final RCV Round:</span>
+        <div class="flex items-center justify-between font-mono text-[10px] pt-0.5 tabular-nums">
+          <span class="text-neutral-600">Final RCV Round:</span>
           <span>
             <strong class="${demShareColor}">${demClean.split(" ").pop()} ${shares.demFinal}%</strong>
             vs
@@ -688,65 +644,56 @@ function showMapTooltip(event, st, race) {
     `;
   } else if (st === "MT") {
     statutoryHtml = `
-      <div class="mt-2 pt-1.5 border-t border-purple-200 bg-purple-50/60 -mx-3.5 px-3.5 py-1 text-[10px] text-purple-950">
+      <div class="mt-2 pt-1.5 border-t border-purple-200 bg-purple-50/70 -mx-3.5 px-3.5 py-1 text-[10px] text-purple-950">
         <strong>3-Way Ballot Note:</strong> Includes 7.0% coalition split drag from Dem line (Bankhead).
       </div>
     `;
   }
 
-  const badgeTextColor = classification.tier === "Tilt" ? "#0f172a" : "#ffffff";
+  const badgeTextColor = classification.tier === "Tilt" ? "#141413" : "#ffffff";
 
   tooltip.innerHTML = `
-    <!-- Header: State Name & Incumbent Tag -->
-    <div class="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100">
+    <div class="flex items-center justify-between gap-2 pb-1.5 border-b border-neutral-200">
       <div>
-        <div class="font-extrabold text-sm text-slate-900 leading-tight">${race.state_name} Senate</div>
-        <div class="text-[10px] font-medium text-slate-400">${race.region} • ${(race.is_open_seat === true || race.is_open_seat === "True") ? `Open (${race.incumbent_party} Held)` : `${race.incumbent_party} Incumbent`}</div>
+        <div class="font-serif font-bold text-base text-ink leading-tight">${race.state_name} Senate</div>
+        <div class="text-[10px] font-medium text-neutral-500">${race.region} &bull; ${(race.is_open_seat === true || race.is_open_seat === "True") ? `Open (${race.incumbent_party} Held)` : `${race.incumbent_party} Incumbent`}</div>
       </div>
       <div class="flex items-center space-x-1">
-        ${isFlip ? '<span class="px-1.5 py-0.5 text-[10px] font-extrabold uppercase bg-slate-900 text-white rounded">FLIP</span>' : ""}
-        <span class="px-2 py-0.5 rounded text-[11px] font-bold shadow-sm" style="background-color: ${classification.color}; color: ${badgeTextColor}">
+        ${isFlip ? '<span class="px-1.5 py-0.5 text-[10px] font-mono font-bold uppercase bg-ink text-white">FLIP</span>' : ""}
+        <span class="px-2 py-0.5 text-[11px] font-bold" style="background-color: ${classification.color}; color: ${badgeTextColor}">
           ${classification.label}
         </span>
       </div>
     </div>
 
-    <!-- Win Probability Callout -->
-    <div class="py-1.5 text-xs font-bold ${leaderColorClass}">
+    <div class="py-1.5 text-xs font-bold tabular-nums ${leaderColorClass}">
       ${leaderName} has a ${leaderProb}% chance to win.
     </div>
 
-    <!-- Candidate Share Table -->
     <div class="mt-0.5">
-      <div class="flex justify-between text-[9px] font-bold uppercase tracking-wider text-slate-400 pb-0.5 border-b border-slate-100">
+      <div class="flex justify-between text-[9px] font-bold uppercase tracking-wider text-neutral-400 pb-0.5 border-b border-neutral-200">
         <span>Candidate</span>
         <span>${shares.isRCV ? "R1 Est. Share" : "Est. Share"}</span>
       </div>
       ${orderedCandidateRows}
     </div>
 
-    <!-- Expected Margin & 80% CI Row -->
-    <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
-      <span class="font-bold uppercase tracking-wider text-slate-400 text-[10px]">Exp. Margin (μ_s):</span>
+    <div class="mt-2 pt-1.5 border-t border-neutral-200 flex items-center justify-between text-[11px] tabular-nums">
+      <span class="font-bold uppercase tracking-wider text-neutral-500 text-[10px]">Exp. Margin:</span>
       <div class="font-mono">
         <strong class="${leaderColorClass}">${formatSignedMargin(race.median_margin, race.dem_candidate)}</strong>
-        <span class="text-[10px] text-slate-400 ml-1">[80% CI: ${formatSignedMargin(race.ci_80[0], race.dem_candidate)} to ${formatSignedMargin(race.ci_80[1], race.dem_candidate)}]</span>
+        <span class="text-[10px] text-neutral-500 ml-1">[${formatSignedMargin(race.ci_80[0], race.dem_candidate)} to ${formatSignedMargin(race.ci_80[1], race.dem_candidate)}]</span>
       </div>
     </div>
 
-    <!-- Compact Structural Context Bar: PVI, 2024 Pres, Spend -->
-    <div class="mt-2 pt-1.5 border-t border-slate-100 grid grid-cols-3 gap-1 text-center bg-slate-50 rounded-lg p-1.5 text-[10px]">
-      <div>
-        <div class="text-slate-400 font-semibold">Voter Index</div>
-        <div class="font-mono font-bold text-slate-700">${formatPVI(race.cook_pvi)}</div>
+    <div class="mt-2 pt-1.5 border-t border-neutral-200 grid grid-cols-2 gap-1 text-center bg-paper p-1.5 text-[10px] tabular-nums">
+      <div class="border-r border-neutral-200 pr-1">
+        <div class="text-neutral-500 font-semibold">Voter Index</div>
+        <div class="font-mono font-bold text-ink">${formatPVI(race.cook_pvi)}</div>
       </div>
-      <div class="border-x border-slate-200/80 px-1">
-        <div class="text-slate-400 font-semibold">2024 Pres</div>
-        <div class="font-mono font-bold text-slate-700">${formatPres2024(race.pres_2024)}</div>
-      </div>
-      <div>
-        <div class="text-slate-400 font-semibold">Total Spend</div>
-        <div class="font-mono font-bold text-slate-700">$${race.total_spend_m.toFixed(1)}M</div>
+      <div class="pl-1">
+        <div class="text-neutral-500 font-semibold">2024 Pres</div>
+        <div class="font-mono font-bold text-ink">${formatPres2024(race.pres_2024)}</div>
       </div>
     </div>
 
@@ -763,14 +710,14 @@ function showUncontestedTooltip(event, st) {
   const vi = voterIndexMap[st] || {};
 
   tooltip.innerHTML = `
-    <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
-      <span class="font-bold text-sm text-slate-900">${stName}</span>
-      <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-200 text-slate-700">No Race in 2026</span>
+    <div class="flex items-center justify-between pb-1.5 border-b border-neutral-200">
+      <span class="font-serif font-bold text-base text-ink">${stName}</span>
+      <span class="px-2 py-0.5 text-[10px] font-mono font-semibold bg-neutral-200 text-neutral-700">Not Up in 2026</span>
     </div>
-    <p class="text-[11px] text-slate-500 mt-1.5">
-      Class I &amp; Class III Senate seats in ${stName} are not up for election this cycle (part of the 34D–31R baseline).
+    <p class="text-[11px] text-neutral-600 mt-1.5 leading-relaxed">
+      No U.S. Senate seat in ${stName} is up for election this cycle.
     </p>
-    <div class="mt-2 pt-1.5 border-t border-slate-100 flex justify-between text-[10px] font-mono text-slate-600">
+    <div class="mt-2 pt-1.5 border-t border-neutral-200 flex justify-between text-[10px] font-mono text-neutral-700 tabular-nums">
       <span>Voter Index: <strong>${formatPVI(vi.pvi)}</strong></span>
       <span>2024 Pres: <strong>${formatPres2024(vi.margin_2024)}</strong></span>
     </div>
@@ -804,19 +751,13 @@ function hideMapTooltip() {
 }
 
 // ---------------------------------------------------------
-// 8. Render Seat Distribution Histogram (Fixed & Responsive)
+// 8. Render Seat Distribution Histogram
+//    - Blue starts at 51 seats (>= 51); 50 seats is RED
+//    - No dotted majority threshold line or label
 // ---------------------------------------------------------
 function renderSeatHistogram() {
   const dist = simData?.chamber_control?.seat_distribution || {};
-  const ci = simData?.chamber_control?.dem_seats_80_ci || [48, 53];
 
-  // Update credible interval badge to live simulation numbers (48 – 53 seats)
-  const ciBadge = document.getElementById("hist-ci-badge");
-  if (ciBadge) {
-    ciBadge.textContent = `${ci[0]} – ${ci[1]} seats`;
-  }
-
-  // Parse and filter relevant seat counts
   const data = Object.keys(dist)
     .map(k => ({ seats: Number(k), prob: Number(dist[k]) }))
     .filter(d => d.seats >= 42 && d.seats <= 58)
@@ -827,10 +768,9 @@ function renderSeatHistogram() {
   const svg = d3.select("#histogram-svg");
   svg.selectAll("*").remove();
 
-  // Define clear viewport
   const width = 800;
-  const height = 250;
-  const margin = { top: 25, right: 25, bottom: 40, left: 50 };
+  const height = 240;
+  const margin = { top: 24, right: 20, bottom: 38, left: 48 };
 
   svg
     .attr("viewBox", `0 0 ${width} ${height}`)
@@ -839,19 +779,17 @@ function renderSeatHistogram() {
     .style("width", "100%")
     .style("height", "auto");
 
-  // X scale (Seats)
   const x = d3.scaleBand()
     .domain(data.map(d => d.seats))
     .range([margin.left, width - margin.right])
-    .padding(0.22);
+    .padding(0.2);
 
-  // Y scale (Probability)
   const maxProb = d3.max(data, d => d.prob) || 0.22;
   const y = d3.scaleLinear()
     .domain([0, maxProb * 1.18])
     .range([height - margin.bottom, margin.top]);
 
-  // Grid lines
+  // Subtle horizontal grid lines
   svg.append("g")
     .attr("class", "grid")
     .attr("transform", `translate(${margin.left},0)`)
@@ -862,10 +800,12 @@ function renderSeatHistogram() {
         .tickFormat("")
     )
     .selectAll("line")
-    .attr("stroke", "#e2e8f0")
+    .attr("stroke", "#e5e5e0")
     .attr("stroke-dasharray", "2,2");
 
-  // Histogram Bars
+  svg.select(".grid .domain").remove();
+
+  // Histogram Bars: Blue starts at 51 seats (d.seats >= 51); 50 seats and below are RED (#c53030)
   svg.append("g")
     .selectAll("rect")
     .data(data)
@@ -874,13 +814,12 @@ function renderSeatHistogram() {
     .attr("y", d => y(d.prob))
     .attr("width", x.bandwidth())
     .attr("height", d => Math.max(0, height - margin.bottom - y(d.prob)))
-    .attr("rx", 3)
-    .attr("fill", d => d.seats >= 51 ? "#1a3a8a" : (d.seats === 50 ? "#4299e1" : "#c53030"))
-    .attr("opacity", d => (d.seats >= ci[0] && d.seats <= ci[1]) ? 0.95 : 0.40)
+    .attr("fill", d => d.seats >= 51 ? "#1a3a8a" : "#c53030")
+    .attr("opacity", 0.92)
     .append("title")
     .text(d => `${d.seats} Dem/Ind Seats (${100 - d.seats} GOP): ${(d.prob * 100).toFixed(1)}%`);
 
-  // Top percentage labels
+  // Percentage labels above bars
   svg.append("g")
     .selectAll("text.prob-label")
     .data(data.filter(d => d.prob >= 0.015))
@@ -889,90 +828,48 @@ function renderSeatHistogram() {
     .attr("x", d => x(d.seats) + x.bandwidth() / 2)
     .attr("y", d => y(d.prob) - 6)
     .attr("text-anchor", "middle")
-    .attr("font-family", "JetBrains Mono, monospace")
+    .attr("font-family", "IBM Plex Mono, monospace")
     .attr("font-size", "9.5px")
     .attr("font-weight", "600")
-    .attr("fill", "#475569")
+    .attr("fill", "#404040")
     .text(d => `${(d.prob * 100).toFixed(1)}%`);
 
-  // 50/51 Majority Line
-  const x50 = x(50);
-  if (x50 !== undefined) {
-    const lineX = x50 + x.bandwidth() / 2;
-    svg.append("line")
-      .attr("x1", lineX)
-      .attr("x2", lineX)
-      .attr("y1", margin.top - 10)
-      .attr("y2", height - margin.bottom)
-      .attr("stroke", "#0f172a")
-      .attr("stroke-width", 2)
-      .attr("stroke-dasharray", "4,3");
-
-    svg.append("text")
-      .attr("x", lineX + 6)
-      .attr("y", margin.top + 2)
-      .attr("font-size", "10px")
-      .attr("font-weight", "700")
-      .attr("fill", "#0f172a")
-      .text("50/51 Majority Threshold →");
-  }
-
   // X Axis
-  svg.append("g")
+  const xAxis = svg.append("g")
     .attr("transform", `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x).tickSizeOuter(0))
-    .selectAll("text")
-    .attr("font-family", "JetBrains Mono, monospace")
-    .attr("font-size", "10px");
+    .call(d3.axisBottom(x).tickSizeOuter(0));
+  xAxis.select(".domain").attr("stroke", "#a3a3a3");
+  xAxis.selectAll("text")
+    .attr("font-family", "IBM Plex Mono, monospace")
+    .attr("font-size", "10px")
+    .attr("font-weight", "600")
+    .attr("fill", "#262626");
 
   // Y Axis
-  svg.append("g")
+  const yAxis = svg.append("g")
     .attr("transform", `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).ticks(4).tickFormat(d => `${(d * 100).toFixed(0)}%`))
-    .selectAll("text")
-    .attr("font-family", "JetBrains Mono, monospace")
-    .attr("font-size", "10px");
+    .call(d3.axisLeft(y).ticks(4).tickFormat(d => `${(d * 100).toFixed(0)}%`));
+  yAxis.select(".domain").remove();
+  yAxis.selectAll("text")
+    .attr("font-family", "IBM Plex Mono, monospace")
+    .attr("font-size", "9.5px")
+    .attr("fill", "#525252");
 }
 
 // ---------------------------------------------------------
-// 9. Render Tipping-Point Battleground Pills
-// ---------------------------------------------------------
-function renderTippingPointPills() {
-  const row = document.getElementById("tipping-pills-row");
-  if (!row) return;
-
-  const topTipping = [...enrichedRaces]
-    .sort((a, b) => b.tipping_point_prob - a.tipping_point_prob)
-    .slice(0, 7);
-
-  row.innerHTML = topTipping.map(r => {
-    const textColor = r.classification.tier === "Tilt" ? "#0f172a" : "#ffffff";
-    return `
-      <div class="inline-flex items-center space-x-2 px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-xs">
-        <span class="px-1.5 py-0.5 rounded font-mono font-bold text-[10px]" style="background-color: ${r.classification.color}; color: ${textColor}">
-          ${r.state}
-        </span>
-        <span class="font-semibold text-slate-800">${formatSignedMargin(r.median_margin, r.dem_candidate)}</span>
-        <span class="text-[11px] font-mono text-slate-500">Tip: ${(r.tipping_point_prob * 100).toFixed(1)}%</span>
-      </div>
-    `;
-  }).join("");
-}
-
-// ---------------------------------------------------------
-// 10. Render Interactive Sortable & Filterable Table
+// 9. Render Interactive Sortable & Filterable Table
+//    - Tipping Point % column removed
+//    - Spend ($M) column removed
+//    - Region dropdown & Independent filter removed
 // ---------------------------------------------------------
 function renderRacesTable() {
   const tbody = document.getElementById("races-table-body");
   const searchQuery = (document.getElementById("race-search-input")?.value || "").toLowerCase().trim();
-  const regionFilter = document.getElementById("region-filter-select")?.value || "ALL";
   const compFilter = document.getElementById("competitive-filter-select")?.value || "ALL";
 
   let filtered = enrichedRaces.filter(r => {
-    if (regionFilter !== "ALL" && r.region !== regionFilter) return false;
     if (compFilter === "COMPETITIVE" && Math.abs(r.median_margin) >= 12.0) return false;
     if (compFilter === "FLIPS" && !r.isFlip) return false;
-    if (compFilter === "IND" && !isIndependentCandidate(r.dem_candidate)) return false;
 
     if (searchQuery) {
       const hay = `${r.state} ${r.state_name} ${r.dem_candidate} ${r.gop_candidate}`.toLowerCase();
@@ -981,7 +878,6 @@ function renderRacesTable() {
     return true;
   });
 
-  // Sort
   const { key, asc } = currentSort;
   filtered.sort((a, b) => {
     let valA, valB;
@@ -1006,60 +902,54 @@ function renderRacesTable() {
     const isInd = isIndependentCandidate(r.dem_candidate);
     const demClean = cleanCandidateName(r.dem_candidate);
     const gopClean = cleanCandidateName(r.gop_candidate);
-    const badgeTextColor = r.classification.tier === "Tilt" ? "#0f172a" : "#ffffff";
+    const badgeTextColor = r.classification.tier === "Tilt" ? "#141413" : "#ffffff";
     const marginColor = r.median_margin >= 0
       ? (isInd ? "text-[#4c2882]" : "text-[#1a3a8a]")
       : "text-[#991b1b]";
 
     let specialBadge = "";
     if (r.state === "GA") {
-      specialBadge = `<span class="ml-1.5 px-1.5 py-0.5 text-[9px] font-mono bg-amber-100 text-amber-900 rounded" title="December Runoff Probability">Runoff ${(r.runoff_prob * 100).toFixed(0)}%</span>`;
+      specialBadge = `<span class="ml-1.5 px-1.5 py-0.5 text-[9px] font-mono bg-amber-100 text-amber-950">Runoff ${(r.runoff_prob * 100).toFixed(0)}%</span>`;
     } else if (r.state === "AK" || r.state === "ME") {
-      specialBadge = `<span class="ml-1.5 px-1.5 py-0.5 text-[9px] font-mono bg-blue-100 text-blue-900 rounded">RCV</span>`;
+      specialBadge = `<span class="ml-1.5 px-1.5 py-0.5 text-[9px] font-mono bg-neutral-100 text-neutral-700">RCV</span>`;
     }
 
     return `
-      <tr class="hover:bg-slate-50/90 transition">
-        <td class="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">
+      <tr class="hover:bg-paper transition">
+        <td class="py-3 px-4 font-bold text-ink whitespace-nowrap">
           <div class="flex items-center">
             <span>${r.state_name}</span>
-            <span class="ml-1.5 text-[10px] font-mono text-slate-400">(${r.incumbent_party})</span>
-            ${r.isFlip ? '<span class="ml-1.5 px-1.5 py-0.2 bg-slate-900 text-white text-[9px] font-mono uppercase rounded">Flip</span>' : ""}
+            <span class="ml-1.5 text-[10px] font-mono text-neutral-500">(${r.incumbent_party})</span>
+            ${r.isFlip ? '<span class="ml-1.5 px-1.5 py-0.2 bg-ink text-white text-[9px] font-mono uppercase">Flip</span>' : ""}
             ${specialBadge}
           </div>
         </td>
-        <td class="py-3 px-3 text-slate-500">${r.region}</td>
+        <td class="py-3 px-3 text-neutral-600">${r.region}</td>
         <td class="py-3 px-4">
           <div class="flex items-center space-x-1.5">
-            <span class="w-2 h-2 rounded-full ${isInd ? 'bg-[#6e4c9e]' : 'bg-[#2b6cb0]'}"></span>
-            <span class="${r.median_margin >= 0 ? 'font-bold text-slate-900' : 'text-slate-600'}">${demClean}</span>
-            ${isInd ? '<span class="px-1 py-0.2 text-[9px] font-mono bg-purple-100 text-purple-900 rounded font-semibold">Ind</span>' : ""}
+            <span class="w-2 h-2 ${isInd ? 'bg-[#6e4c9e]' : 'bg-[#2b6cb0]'}"></span>
+            <span class="${r.median_margin >= 0 ? 'font-bold text-ink' : 'text-neutral-700'}">${demClean}</span>
+            ${isInd ? '<span class="px-1 py-0.2 text-[9px] font-mono bg-purple-100 text-purple-950 font-semibold">Ind</span>' : ""}
           </div>
         </td>
         <td class="py-3 px-4">
           <div class="flex items-center space-x-1.5">
-            <span class="w-2 h-2 rounded-full bg-[#c53030]"></span>
-            <span class="${r.median_margin < 0 ? 'font-bold text-slate-900' : 'text-slate-600'}">${gopClean}</span>
+            <span class="w-2 h-2 bg-[#c53030]"></span>
+            <span class="${r.median_margin < 0 ? 'font-bold text-ink' : 'text-neutral-700'}">${gopClean}</span>
           </div>
         </td>
-        <td class="py-3 px-3 text-right font-mono text-slate-600">${formatPVI(r.cook_pvi)}</td>
-        <td class="py-3 px-3 text-right font-mono text-slate-600">${formatPres2024(r.pres_2024)}</td>
+        <td class="py-3 px-3 text-right font-mono text-neutral-700">${formatPVI(r.cook_pvi)}</td>
+        <td class="py-3 px-3 text-right font-mono text-neutral-700">${formatPres2024(r.pres_2024)}</td>
         <td class="py-3 px-3 text-center">
-          <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold shadow-sm" style="background-color: ${r.classification.color}; color: ${badgeTextColor}">
+          <span class="inline-block px-2 py-0.5 text-[10px] font-bold" style="background-color: ${r.classification.color}; color: ${badgeTextColor}">
             ${r.classification.label}
           </span>
         </td>
         <td class="py-3 px-3 text-right font-mono font-bold ${marginColor}">
           ${formatSignedMargin(r.median_margin, r.dem_candidate)}
         </td>
-        <td class="py-3 px-3 text-right font-mono font-semibold text-slate-800">
+        <td class="py-3 px-4 text-right font-mono font-semibold text-ink">
           ${(r.leaderWinProb * 100).toFixed(1)}%
-        </td>
-        <td class="py-3 px-3 text-right font-mono text-slate-600">
-          ${(r.tipping_point_prob * 100).toFixed(1)}%
-        </td>
-        <td class="py-3 px-4 text-right font-mono text-slate-600">
-          $${r.total_spend_m.toFixed(1)}M
         </td>
       </tr>
     `;
@@ -1067,10 +957,9 @@ function renderRacesTable() {
 }
 
 // ---------------------------------------------------------
-// 11. Event Listeners & Navigation
+// 10. Event Listeners
 // ---------------------------------------------------------
 function setupEventListeners() {
-  // Table Sorting
   document.querySelectorAll("th[data-sort]").forEach(th => {
     th.addEventListener("click", () => {
       const sortKey = th.getAttribute("data-sort");
@@ -1084,45 +973,13 @@ function setupEventListeners() {
     });
   });
 
-  // Table Filters
-  ["race-search-input", "region-filter-select", "competitive-filter-select"].forEach(id => {
+  ["race-search-input", "competitive-filter-select"].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.addEventListener("input", renderRacesTable);
       el.addEventListener("change", renderRacesTable);
     }
   });
-
-  // Top Navigation Tabs Smooth Scroll
-  document.querySelectorAll(".nav-tab").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const target = btn.getAttribute("data-nav");
-      const section = document.getElementById(`section-${target}`);
-      if (section) {
-        section.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    });
-  });
-
-  const mobileMethodBtn = document.getElementById("mobile-method-btn");
-  if (mobileMethodBtn) {
-    mobileMethodBtn.addEventListener("click", () => {
-      document.getElementById("section-methodology")?.scrollIntoView({ behavior: "smooth" });
-    });
-  }
-
-  // Sidebar View Buttons
-  const btnMap = document.getElementById("btn-view-map");
-  const btnHist = document.getElementById("btn-view-hist");
-  if (btnMap && btnHist) {
-    btnMap.addEventListener("click", () => {
-      document.getElementById("card-map-view")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-    btnHist.addEventListener("click", () => {
-      document.getElementById("card-hist-view")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-  }
 }
 
-// Initialize on DOM load
 document.addEventListener("DOMContentLoaded", initDashboard);
