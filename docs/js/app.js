@@ -313,17 +313,11 @@ async function initDashboard() {
 // ---------------------------------------------------------
 function renderTopBanner() {
   const cc = simData.chamber_control;
-  const meta = simData.metadata;
 
   document.getElementById("dem-majority-prob").textContent = `${(cc.p_dem_majority * 100).toFixed(1)}%`;
   document.getElementById("gop-majority-prob").textContent = `${(cc.p_gop_majority * 100).toFixed(1)}%`;
   document.getElementById("dem-expected-seats").textContent = cc.expected_dem_seats.toFixed(1);
   document.getElementById("gop-expected-seats").textContent = cc.expected_gop_seats.toFixed(1);
-
-  const gcbEl = document.getElementById("meta-gcb");
-  if (gcbEl && meta && meta.generic_ballot_margin !== undefined) {
-    gcbEl.textContent = `GCB: D+${meta.generic_ballot_margin.toFixed(1)}%`;
-  }
 
   const counts = {
     D_Solid: 34,
@@ -378,10 +372,27 @@ function renderTopBanner() {
   });
 
   const flips = enrichedRaces.filter(r => r.isFlip);
-  const flipNames = flips.map(r => `${r.state} (${r.classification.partyLabel})`).join(", ");
   const flipBadge = document.getElementById("flip-count-badge");
   if (flipBadge) {
-    flipBadge.textContent = flips.length > 0 ? `${flips.length} (${flipNames})` : "0";
+    if (flips.length > 0) {
+      const gopToDem = flips.filter(r => r.incumbent_party === "GOP" && r.median_margin >= 0);
+      const demToGop = flips.filter(r => r.incumbent_party === "DEM" && r.median_margin < 0);
+      const otherFlips = flips.filter(r => !gopToDem.includes(r) && !demToGop.includes(r));
+
+      const parts = [];
+      if (gopToDem.length > 0) {
+        parts.push(`${gopToDem.length} GOP to Dem (${gopToDem.map(r => r.state_name).join(", ")})`);
+      }
+      if (demToGop.length > 0) {
+        parts.push(`${demToGop.length} Dem to GOP (${demToGop.map(r => r.state_name).join(", ")})`);
+      }
+      if (otherFlips.length > 0) {
+        parts.push(`${otherFlips.length} Other (${otherFlips.map(r => `${r.state_name} to ${r.classification.partyLabel}`).join(", ")})`);
+      }
+      flipBadge.textContent = parts.join(" • ");
+    } else {
+      flipBadge.textContent = "0";
+    }
   }
 }
 
@@ -404,7 +415,7 @@ function renderStatutoryWatchSidebar() {
     items.push(`
       <div class="pb-2.5 border-b border-neutral-200 space-y-1">
         <div class="flex items-center justify-between">
-          <span class="font-bold text-ink">Georgia (&gt;50% Rule)</span>
+          <span class="font-bold text-ink">Georgia Runoff</span>
           <span class="px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-amber-100 text-amber-950">
             Runoff: ${(ga.runoff_prob * 100).toFixed(1)}%
           </span>
@@ -426,8 +437,8 @@ function renderStatutoryWatchSidebar() {
           </span>
         </div>
         <p class="text-[11px] text-neutral-600 leading-relaxed">
-          <strong>AK:</strong> 94% major R1 share; minor conservative transfers favor Sullivan (<strong class="font-mono text-ink">${formatSignedMargin(ak.median_margin, ak.dem_candidate)}</strong>).<br>
-          <strong>ME:</strong> 98% major R1 share; Jackson leads Collins <strong class="font-mono text-ink">${formatSignedMargin(me.median_margin, me.dem_candidate)}</strong>.
+          <strong>AK:</strong> RCV tabulation expected. Transfer votes favor the incumbent Sullivan.<br>
+          <strong>ME:</strong> Jackson expected to win in the first round.
         </p>
       </div>
     `);
@@ -437,16 +448,16 @@ function renderStatutoryWatchSidebar() {
     items.push(`
       <div class="space-y-1">
         <div class="flex items-center justify-between">
-          <span class="font-bold text-ink">Independent Challengers</span>
+          <span class="font-bold text-ink">Independent vs. Republican</span>
           <span class="px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-purple-100 text-purple-950">
             4 States
           </span>
         </div>
         <p class="text-[11px] text-neutral-600 leading-relaxed">
           <strong>NE:</strong> Dan Osborn (${formatSignedMargin(ne.median_margin, ne.dem_candidate)}) &bull;
-          <strong>MT:</strong> Seth Bodnar (${formatSignedMargin(mt.median_margin, mt.dem_candidate)}, 3-way split) &bull; plus ID &amp; SD.
+          <strong>MT:</strong> Seth Bodnar (${formatSignedMargin(mt.median_margin, mt.dem_candidate)}, 3-way split with Alani Bankhead (D)) &bull; plus ID &amp; SD.
         </p>
-      </div>
+      </div> 
     `);
   }
 
@@ -566,7 +577,7 @@ async function renderChoroplethMap() {
 }
 
 // ---------------------------------------------------------
-// 7. Interactive Hover Infobox (Tooltip — No Emojis, Clean Editorial)
+// 7. Interactive Hover Infobox (Tooltip — Clean Editorial)
 // ---------------------------------------------------------
 function showMapTooltip(event, st, race) {
   const tooltip = document.getElementById("map-tooltip");
@@ -753,7 +764,6 @@ function hideMapTooltip() {
 // ---------------------------------------------------------
 // 8. Render Seat Distribution Histogram
 //    - Blue starts at 51 seats (>= 51); 50 seats is RED
-//    - No dotted majority threshold line or label
 // ---------------------------------------------------------
 function renderSeatHistogram() {
   const dist = simData?.chamber_control?.seat_distribution || {};
@@ -858,9 +868,6 @@ function renderSeatHistogram() {
 
 // ---------------------------------------------------------
 // 9. Render Interactive Sortable & Filterable Table
-//    - Tipping Point % column removed
-//    - Spend ($M) column removed
-//    - Region dropdown & Independent filter removed
 // ---------------------------------------------------------
 function renderRacesTable() {
   const tbody = document.getElementById("races-table-body");

@@ -54,62 +54,7 @@
         }
     </script>
 
-    <style>
-        body {
-            background-color: #f7f7f5;
-            color: #141413;
-            font-family: 'Inter', sans-serif;
-            font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-        }
-
-        .tabular-nums {
-            font-variant-numeric: tabular-nums;
-        }
-
-        .state-polygon {
-            stroke: #ffffff;
-            stroke-width: 1px;
-            stroke-linejoin: round;
-            transition: filter 0.1s ease, stroke-width 0.1s ease;
-            cursor: pointer;
-        }
-
-        .state-polygon.uncontested {
-            cursor: default;
-        }
-
-        .state-polygon.contested:hover {
-            stroke: #141413;
-            stroke-width: 2px;
-            filter: brightness(0.94);
-        }
-
-        .tooltip-card {
-            pointer-events: none;
-            box-shadow: 0 8px 20px -4px rgba(20, 20, 19, 0.16), 0 2px 6px -1px rgba(20, 20, 19, 0.08);
-            background: #ffffff;
-            border: 1px solid #c8c5be;
-            transition: opacity 0.08s ease;
-        }
-
-        /* Custom subtle scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f0ec;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #c8c5be;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #9e9b93;
-        }
-    </style>
+    <link rel="stylesheet" href="./css/styles.css?v=2026.5" />
 </head>
 
 <body class="min-h-screen flex flex-col antialiased selection:bg-[#1a3a8a] selection:text-white">
@@ -117,12 +62,12 @@
     <!-- Minimalist Editorial Masthead -->
     <header class="bg-white border-b border-rule">
         <div
-            class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+            class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h1 class="font-serif text-3xl sm:text-4xl font-extrabold tracking-tight text-ink leading-none">
                 2026 Senate Forecast
             </h1>
-            <div class="flex items-center space-x-2.5 text-xs sm:text-sm font-mono text-neutral-600 tabular-nums">
-                <span id="meta-gcb" class="font-semibold text-[#1a3a8a]">GCB: D+8.8%</span>
+            <div class="flex items-center space-x-2.5 text-xs sm:text-sm font-mono text-neutral-600 tabular-nums leading-none">
+                <span id="meta-gcb" class="font-semibold text-[#1a3a8a]">Final Polling GCB: D+8.8%</span>
                 <span class="text-neutral-300">/</span>
                 <span id="meta-timestamp" class="text-neutral-500">Nov 3, 2026</span>
             </div>
@@ -141,30 +86,26 @@
                     <div
                         class="lg:col-span-3 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-rule pb-4 lg:pb-0 lg:pr-6">
                         <div class="flex items-center space-x-2">
-                            <span class="w-2.5 h-2.5 bg-[#1a3a8a] inline-block"></span>
                             <span class="text-[11px] font-bold uppercase tracking-widest text-neutral-500">Democrats +
                                 Ind.</span>
                         </div>
-                        <div class="mt-2 flex items-baseline space-x-2.5">
+                        <div class="mt-2 flex flex-col items-start">
                             <span id="dem-majority-prob"
                                 class="font-serif text-4xl sm:text-[42px] font-extrabold text-[#1a3a8a] tracking-tight tabular-nums leading-none">--%</span>
-                            <span class="text-xs font-medium text-neutral-700 leading-snug">51+ seats to gain
+                            <span class="mt-1.5 text-xs font-medium text-neutral-700 leading-snug">51+ seats to gain
                                 control</span>
                         </div>
                         <div
                             class="mt-3 pt-2.5 border-t border-neutral-200 flex items-center justify-between text-xs text-neutral-600 tabular-nums">
                             <span>Expected: <strong id="dem-expected-seats"
                                     class="font-mono text-ink">--</strong></span>
-                            <span class="text-neutral-500">34 seats not up for election</span>
                         </div>
                     </div>
 
                     <!-- Center: 100-Seat Chamber Balance Bar -->
                     <div class="lg:col-span-6 flex flex-col justify-center">
                         <div class="flex items-center justify-between mb-1">
-                            <span class="text-[11px] font-bold uppercase tracking-widest text-neutral-500">100-Seat
-                                Chamber Balance (By Expected Margin)</span>
-                            <span class="text-[11px] font-mono text-neutral-600 tabular-nums">51 for Dem Majority</span>
+                            <span class="text-[11px] font-bold uppercase tracking-widest text-neutral-500">Expected Balance of Power: 51D-49R</span>
                         </div>
 
                         <!-- 50 / 51 Threshold Tick -->
@@ -182,8 +123,8 @@
 
                         <!-- Sub-labels under bar -->
                         <div class="flex justify-between items-center mt-2 text-[11px] text-neutral-500">
-                            <span>34 Not Up (D) + Contested D/I</span>
-                            <span>Contested R + 31 Not Up (R)</span>
+                            <span>34 seats not up for election</span>
+                            <span>31 seats not up for election</span>
                         </div>
                     </div>
 
@@ -193,17 +134,15 @@
                         <div class="flex items-center lg:justify-end space-x-2">
                             <span
                                 class="text-[11px] font-bold uppercase tracking-widest text-neutral-500">Republicans</span>
-                            <span class="w-2.5 h-2.5 bg-[#991b1b] inline-block"></span>
                         </div>
-                        <div class="mt-2 flex items-baseline lg:justify-end space-x-2.5">
+                        <div class="mt-2 flex flex-col items-start lg:items-end">
                             <span id="gop-majority-prob"
                                 class="font-serif text-4xl sm:text-[42px] font-extrabold text-[#991b1b] tracking-tight tabular-nums leading-none">--%</span>
-                            <span class="text-xs font-medium text-neutral-700 leading-snug">to retain control.</span>
+                            <span class="mt-1.5 text-xs font-medium text-neutral-700 leading-snug">to retain control.</span>
                         </div>
                         <div
                             class="mt-3 pt-2.5 border-t border-neutral-200 flex items-center justify-between text-xs text-neutral-600 tabular-nums">
-                            <span class="text-neutral-500">31 seats not up for election</span>
-                            <span>Expected: <strong id="gop-expected-seats"
+                            <span class="ml-auto text-right whitespace-nowrap">Expected: <strong id="gop-expected-seats"
                                     class="font-mono text-ink">--</strong></span>
                         </div>
                     </div>
@@ -220,11 +159,10 @@
                     <!-- Margin Classification Legend -->
                     <div class="bg-white border border-rule p-4 space-y-3">
                         <div class="flex items-center justify-between border-b border-neutral-200 pb-2">
-                            <span class="text-[11px] font-bold uppercase tracking-widest text-ink">Margin Ratings</span>
-                            <span class="text-[10px] font-mono text-neutral-500">By Median μ_s</span>
+                            <span class="text-[11px] font-bold uppercase tracking-widest text-ink">Rating Thresholds</span>
                         </div>
                         <p class="text-[11px] leading-relaxed text-neutral-600">
-                            Ratings reflect <strong>expected median margin (μ<sub>s</sub>)</strong>, not win probability
+                            Ratings are based on expected margin of victory, not win probability
                             %.
                         </p>
 
@@ -284,7 +222,7 @@
                             </div>
                             <div class="flex items-center space-x-2.5">
                                 <span class="w-6 h-3.5 bg-[#e2e8f0] border border-neutral-300 flex-shrink-0"></span>
-                                <span><strong>Gray:</strong> Not up in 2026 (65 seats)</span>
+                                <span><strong>Gray:</strong> No Senate election in 2026</span>
                             </div>
                         </div>
                     </div>
@@ -293,7 +231,7 @@
                     <div class="bg-white border border-rule p-4 space-y-3">
                         <div
                             class="text-[11px] font-bold uppercase tracking-widest text-ink border-b border-neutral-200 pb-2">
-                            Statutory Rules Watch
+                            State-Specific Dynamics
                         </div>
                         <div id="statutory-watch-list" class="space-y-2.5 text-xs">
                             <!-- Populated by JS -->
@@ -310,8 +248,7 @@
                             class="flex flex-wrap items-baseline justify-between gap-2 pb-3 mb-3 border-b border-neutral-200">
                             <div>
                                 <h2 class="font-serif text-xl font-bold text-ink">2026 Senate Forecast Map</h2>
-                                <p class="text-xs text-neutral-500 mt-0.5">Hover over any contested state for candidate
-                                    vote shares, Voter Index, 2024 presidential margin, and runoff/RCV rules.</p>
+                                <p class="text-xs text-neutral-500 mt-0.5">Hover over state for infobox</p>
                             </div>
                             <div
                                 class="text-xs font-mono text-neutral-700 bg-paper border border-rule px-2.5 py-1 tabular-nums">
@@ -329,8 +266,8 @@
                     <!-- Seat Distribution Histogram Card -->
                     <div id="card-hist-view" class="bg-white border border-rule p-5 sm:p-6">
                         <div class="pb-3 mb-4 border-b border-neutral-200">
-                            <h3 class="font-serif text-xl font-bold text-ink">Simulated Democratic + Independent Caucus
-                                Seat Distribution</h3>
+                            <h3 class="font-serif text-xl font-bold text-ink">
+                                Democratic Seat Probability Distribution</h3>
                         </div>
                         <div id="histogram-container" class="w-full relative">
                             <svg id="histogram-svg" class="w-full h-auto"></svg>
@@ -524,7 +461,7 @@
     </footer>
 
     <!-- Main Application Script -->
-    <script src="./js/app.js?v=2026.3"></script>
+    <script src="./js/app.js?v=2026.5"></script>
 </body>
 
 </html>
