@@ -332,20 +332,17 @@
         <section id="section-methodology" class="bg-white border border-rule p-6 sm:p-8 space-y-6">
             <div class="border-b border-rule pb-4 flex flex-wrap items-baseline justify-between gap-2">
                 <div>
-                    <span class="text-[11px] font-bold uppercase tracking-widest text-neutral-500">Technical
-                        Documentation</span>
-                    <h2 class="font-serif text-2xl font-bold text-ink mt-0.5">Forecasting Methodology</h2>
+                    <h2 class="font-serif text-2xl font-bold text-ink mt-0.5">Methodology</h2>
                 </div>
-                <span class="text-xs font-mono text-neutral-500">40,000 Correlated Trials</span>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-xs leading-relaxed text-neutral-700">
                 <!-- Block 1 -->
                 <div class="border-t-2 border-ink pt-3.5 space-y-2">
-                    <h3 class="font-bold text-sm text-ink">1. Polling &amp; Fundamentals Blend (85 / 15)</h3>
+                    <h3 class="font-bold text-sm text-ink">1. Polling &amp; Fundamentals (85 / 15)</h3>
                     <p>
                         For polled races, the expected margin <span class="font-mono text-ink">μ_s</span> weights
-                        recency-decayed, screen-adjusted polling composites at <strong>85%</strong> and structural
+                        screen-adjusted polling composites at <strong>85%</strong>, and 
                         fundamentals at <strong>15%</strong>:
                     </p>
                     <div class="bg-paper p-2.5 border border-rule font-mono text-[11px] text-ink">
@@ -353,26 +350,25 @@
                     </div>
                     <p>
                         Fundamentals combine state Voter Index, the national Generic Ballot (<span
-                            class="font-mono">D+8.8% × Elasticity</span>), strict incumbency (<span
+                            class="font-mono">D+8.8% × Elasticity</span>), incumbency (<span
                             class="font-mono">±2.5%</span> only when a sitting Senator runs; <span
-                            class="font-mono">0.0%</span> in open seats), and candidate office tiers.
+                            class="font-mono">0.0%</span> in open seats), and candidate experience.
                     </p>
                 </div>
 
                 <!-- Block 2 -->
                 <div class="border-t-2 border-ink pt-3.5 space-y-2">
-                    <h3 class="font-bold text-sm text-ink">2. Cycle-Weighted Voter Index (0.65 / 0.35)</h3>
+                    <h3 class="font-bold text-sm text-ink">2. Voter Index</h3>
                     <p>
-                        Each state's baseline Partisan Voter Index weights the 2024 presidential two-party margin
-                        deviation at <strong>65%</strong> and the 2020 deviation at <strong>35%</strong>:
+                        Each state's baseline Partisan Voter Index weights the 2024 presidential margin
+                        at <strong>65%</strong> and the 2020 margin at <strong>35%</strong>:
                     </p>
                     <div class="bg-paper p-2.5 border border-rule font-mono text-[11px] text-ink">
                         PVI_s = 0.65 · Dev_2024 + 0.35 · Dev_2020
                     </div>
                     <p>
                         Registered Voter (RV) and Adult (A) samples are adjusted dynamically using an exponential
-                        saturation dampener <span class="font-mono">exp(-S_total / 150)</span> and bounded spending
-                        turnout skew.
+                        saturation dampener <span class="font-mono">exp(-S_total / 150)</span>.
                     </p>
                 </div>
 
@@ -397,44 +393,29 @@
 
                 <!-- Block 4 -->
                 <div class="border-t-2 border-neutral-400 pt-3.5 space-y-2">
-                    <h3 class="font-bold text-sm text-ink">4. Statutory RCV &amp; Runoff Rules</h3>
+                    <h3 class="font-bold text-sm text-ink">4. RCV &amp; Runoff States</h3>
                     <p>
-                        <strong>Georgia Majority Rule:</strong> Requires &gt;50.0% to win outright. Simulated trials
-                        where <span class="font-mono">|Margin| &lt; 2.5%</span> advance to a December runoff.
+                        <strong>Georgia:</strong> Goes to runoff if no candidate reaches 50%. Simulated trials
+                        where the margin is within 2.5% advance to runoff.
                     </p>
                     <p>
-                        <strong>Alaska &amp; Maine RCV:</strong> Round 1 major-party shares are scaled by <span
-                            class="font-mono">first_choice_share_major</span> (<strong>0.94</strong> in AK,
-                        <strong>0.98</strong> in ME). If neither crosses 50%, non-exhausted minor ballots transfer via
-                        empirical second-choice flows.
+                        <strong>Alaska &amp; Maine RCV:</strong> Major party candidates receive a combined vote share of
+                        <strong>94%</strong> in Alaska and <strong>98%</strong> in Maine. If neither candidate crosses 50%, 
+                        non-exhausted ballots transfer to the major candidates with empirical vote shares.
                     </p>
                 </div>
 
                 <!-- Block 5 -->
                 <div class="border-t-2 border-neutral-400 pt-3.5 space-y-2">
-                    <h3 class="font-bold text-sm text-ink">5. Independent Challengers &amp; 3-Way Splits</h3>
+                    <h3 class="font-bold text-sm text-ink">5. Independent v. Republican &amp; 3-Way Races</h3>
                     <p>
                         Where Democrats did not field a nominee (<strong>Nebraska</strong> with Dan Osborn,
                         <strong>Idaho</strong> with Todd Achilles, <strong>South Dakota</strong> with Brian Bengs), the
-                        Independent is modeled as the primary non-GOP challenger.
+                        Independent is modeled as the "Democratic" candidate.
                     </p>
                     <p>
-                        In <strong>Montana</strong>, where Independent Seth Bodnar runs alongside a Democratic nominee,
-                        a 7.0% coalition split deduction accounts for ballot-line division.
-                    </p>
-                </div>
-
-                <!-- Block 6 -->
-                <div class="border-t-2 border-neutral-400 pt-3.5 space-y-2">
-                    <h3 class="font-bold text-sm text-ink">6. Non-Contested Chamber Baseline</h3>
-                    <p>
-                        Of the 100 U.S. Senate seats, <strong>65 seats</strong> are not up for election in 2026:
-                        <strong>34 held by Democrats/caucusing Independents</strong> and <strong>31 held by
-                            Republicans</strong>.
-                    </p>
-                    <p>
-                        Democrats and caucusing Independents must win at least 17 of the 35 contested seats (reaching 51
-                        total) to gain an outright Senate majority.
+                        In <strong>Montana</strong>, Independent Seth Bodnar runs alongside Democrat Alani Bankhead,
+                        applying a 7 point ballot-splitting penalty.
                     </p>
                 </div>
             </div>
